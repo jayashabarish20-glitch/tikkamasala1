@@ -2,6 +2,39 @@
  * Geolocation + coordinates display.
  */
 let _currentLocation = null;
+let _deliveryEligible = null; // null = not yet checked, true/false = checked
+
+async function loadDeliveryConfig() {
+  try {
+    const cfg = await api.get('/api/delivery/config');
+    const radiusEl = document.getElementById('radius-text');
+    const chargeEl = document.getElementById('delivery-charge-text');
+    if (radiusEl) radiusEl.textContent = `${cfg.radius_km} km`;
+    if (chargeEl) chargeEl.textContent = formatPrice(cfg.delivery_charge);
+  } catch (err) {
+    console.error('Failed to load delivery config:', err);
+  }
+}
+
+async function checkDeliveryEligibility(lat, lng) {
+  const statusEl = document.getElementById('delivery-eligibility-status');
+  try {
+    const result = await api.post('/api/delivery/check', { lat, lng });
+    _deliveryEligible = result.eligible;
+    if (statusEl) {
+      statusEl.innerHTML = `<span style="color:var(--${result.eligible ? 'success' : 'error'})">${result.eligible ? '✅' : '🚫'} ${result.message}</span>`;
+    }
+    if (!result.eligible) {
+      showToast(result.message, 'error');
+    }
+  } catch (err) {
+    _deliveryEligible = false;
+    if (statusEl) {
+      statusEl.innerHTML = `<span style="color:var(--error)">⚠️ We couldn't verify your delivery location. Please try again.</span>`;
+    }
+  }
+  return _deliveryEligible;
+}
 
 async function getCurrentLocation() {
   return new Promise((resolve, reject) => {
@@ -43,7 +76,9 @@ async function handleGetLocation() {
     if (latEl) latEl.value = loc.lat;
     if (lngEl) lngEl.value = loc.lng;
     showToast('Location captured!', 'success');
+    await checkDeliveryEligibility(loc.lat, loc.lng);
   } catch (err) {
+    _deliveryEligible = false;
     showToast(err.message, 'error');
     if (statusEl) statusEl.innerHTML = `<span style="color:var(--error)">⚠️ ${err.message}</span>`;
   } finally {

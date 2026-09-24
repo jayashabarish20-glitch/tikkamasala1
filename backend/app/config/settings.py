@@ -25,9 +25,9 @@ class Settings(BaseSettings):
     ADMIN_EMAIL: str = "admin@tikkamasala.com"
 
     # Shop Location
-    SHOP_LATITUDE: float = 13.0827
-    SHOP_LONGITUDE: float = 80.2707
-    DELIVERY_RADIUS_KM: float = 3.0
+    SHOP_LATITUDE: float = 13.096627
+    SHOP_LONGITUDE: float = 80.259209
+    DELIVERY_RADIUS_KM: float = 5.0
 
     # Delivery
     DELIVERY_CHARGE: float = 30.0

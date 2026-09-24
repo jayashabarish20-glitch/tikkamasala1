@@ -95,6 +95,7 @@ function updateCartUI() {
       <img class="cart-item-img" src="${item.product_image || 'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=150'}" alt="${item.product_name}" loading="lazy">
       <div>
         <div class="cart-item-name">${item.product_name}</div>
+        ${item.stock_error ? `<div class="alert alert-error" style="margin-top:.4rem;padding:.45rem .6rem;font-size:.82rem">${item.stock_error}</div>` : ''}
         <div class="cart-item-price">${formatPrice(item.unit_price)} each</div>
         <div class="qty-control" style="margin-top:.5rem;display:inline-flex;">
           <button class="qty-btn" onclick="changeQty(${item.id}, ${item.quantity - 1})">−</button>
@@ -113,6 +114,20 @@ function updateCartUI() {
   const deliveryFee = 30; // preview — actual is server-computed at checkout
   document.getElementById('summary-subtotal').textContent = formatPrice(_cart.subtotal);
   document.getElementById('summary-items').textContent = _cart.item_count + ' item(s)';
+  const checkoutLink = document.getElementById('checkout-link');
+  const hasStockIssue = _cart.items.some(item => item.stock_error);
+  if (checkoutLink) {
+    checkoutLink.classList.toggle('disabled', hasStockIssue);
+    checkoutLink.setAttribute('aria-disabled', hasStockIssue ? 'true' : 'false');
+    checkoutLink.title = hasStockIssue ? 'Remove or reduce out-of-stock items before checkout.' : '';
+  }
+}
+
+function goToCheckout(event) {
+  if (_cart.items.some(item => item.stock_error)) {
+    event.preventDefault();
+    showToast('Please remove or reduce out-of-stock items before checkout.', 'error');
+  }
 }
 
 async function changeQty(itemId, qty) {

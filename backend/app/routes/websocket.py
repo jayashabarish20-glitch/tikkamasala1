@@ -41,3 +41,15 @@ async def websocket_orders(websocket: WebSocket, token: str = Query(...)):
             ws_manager.disconnect(websocket, is_admin=True)
         else:
             ws_manager.disconnect(websocket, user_id=user_id)
+
+
+@router.websocket("/api/ws/inventory")
+async def websocket_inventory(websocket: WebSocket):
+    await ws_manager.connect_inventory(websocket)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            if data == "ping":
+                await websocket.send_text('{"type":"pong"}')
+    except WebSocketDisconnect:
+        ws_manager.disconnect(websocket)

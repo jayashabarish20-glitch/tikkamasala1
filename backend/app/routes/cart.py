@@ -20,7 +20,8 @@ async def get_current_user_id(request: Request) -> int:
     if not auth.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Not authenticated.")
     payload = decode_token(auth.split(" ")[1])
-    if payload.get("role") != "customer":
+    role = payload.get("role")
+    if role is not None and role not in ("customer", "user", "admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Customer access required.")
     return int(payload["sub"])
 
@@ -56,6 +57,9 @@ async def build_cart_response(db: AsyncSession, cart: Cart) -> dict:
             "unit_price": float(product.price),
             "quantity": item.quantity,
             "subtotal": item_subtotal,
+            "stock_quantity": product.stock_quantity,
+            "is_available": bool(product.is_available and product.stock_quantity > 0),
+            "stock_error": f"{product.name} is currently out of stock." if product.stock_quantity <= 0 or not product.is_available else (f"Only {product.stock_quantity} {product.name} available." if item.quantity > product.stock_quantity else None),
         })
     return {"id": cart.id, "items": items, "subtotal": round(subtotal, 2), "item_count": len(items)}
 
@@ -77,7 +81,7 @@ async def add_to_cart(req: AddToCartRequest, request: Request, db: AsyncSession 
     if not product:
         raise HTTPException(status_code=404, detail="Product not found.")
     if not product.is_available:
-        raise HTTPException(status_code=400, detail="Product is not available.")
+        raise HTTPException(status_code=400, detail=f"{product.name} is currently out of stock.")
     if req.quantity < 1:
         raise HTTPException(status_code=400, detail="Quantity must be at least 1.")
 
@@ -88,6 +92,8 @@ async def add_to_cart(req: AddToCartRequest, request: Request, db: AsyncSession 
         select(CartItem).where(CartItem.cart_id == cart.id, CartItem.product_id == req.product_id)
     )
     existing = item_result.scalars().first()
+    if req.quantity > product.stock_quantity:
+        raise HTTPException(status_code=400, detail=f"Only {product.stock_quantity} {product.name} available.")
     if existing:
         existing.quantity = req.quantity
     else:
@@ -111,6 +117,12 @@ async def update_cart_item(item_id: int, req: UpdateCartItemRequest, request: Re
     if req.quantity < 1:
         await db.delete(item)
     else:
+        product_result = await db.execute(select(Product).where(Product.id == item.product_id))
+        product = product_result.scalars().first()
+        if not product:
+            raise HTTPException(status_code=404, detail="Product not found.")
+        if req.quantity > product.stock_quantity or not product.is_available:
+            raise HTTPException(status_code=400, detail=f"{product.name} does not have enough stock for that quantity.")
         item.quantity = req.quantity
 
     await db.commit()

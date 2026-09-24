@@ -15,6 +15,7 @@ class ConnectionManager:
         self.customer_connections: Dict[int, List[WebSocket]] = {}
         # admin WebSocket connections
         self.admin_connections: List[WebSocket] = []
+        self.inventory_connections: List[WebSocket] = []
 
     async def connect_customer(self, websocket: WebSocket, user_id: int):
         await websocket.accept()
@@ -28,6 +29,10 @@ class ConnectionManager:
         self.admin_connections.append(websocket)
         logger.info("Admin connected via WebSocket")
 
+    async def connect_inventory(self, websocket: WebSocket):
+        await websocket.accept()
+        self.inventory_connections.append(websocket)
+
     def disconnect(self, websocket: WebSocket, user_id: int = None, is_admin: bool = False):
         if is_admin and websocket in self.admin_connections:
             self.admin_connections.remove(websocket)
@@ -39,6 +44,8 @@ class ConnectionManager:
             if not conns:
                 del self.customer_connections[user_id]
             logger.info(f"Customer {user_id} disconnected from WebSocket")
+        elif websocket in self.inventory_connections:
+            self.inventory_connections.remove(websocket)
 
     async def send_to_customer(self, user_id: int, data: dict):
         """Send a message to all connections of a specific customer."""
@@ -62,6 +69,17 @@ class ConnectionManager:
                 dead.append(ws)
         for ws in dead:
             self.admin_connections.remove(ws)
+
+    async def broadcast_inventory(self, data: dict):
+        dead = []
+        for ws in self.inventory_connections:
+            try:
+                await ws.send_text(json.dumps(data))
+            except Exception:
+                dead.append(ws)
+        for ws in dead:
+            if ws in self.inventory_connections:
+                self.inventory_connections.remove(ws)
 
 
 # Singleton instance used across the application

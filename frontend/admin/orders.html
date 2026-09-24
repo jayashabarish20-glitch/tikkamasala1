@@ -239,7 +239,7 @@
             <div><div class="text-muted" style="font-size:.8rem">Status</div><span class="badge status-${o.status}">${o.status.replace(/_/g,' ')}</span></div>
             <div><div class="text-muted" style="font-size:.8rem">Payment</div><span class="badge badge-${o.payment_status==='PAID'?'success':'warning'}">${o.payment_status||'—'}</span></div>
           </div>
-          ${o.address ? `<div class="alert alert-info" style="margin-bottom:1rem">📍 ${o.address}</div>` : ''}
+          ${o.delivery_address ? `<div class="alert alert-info" style="margin-bottom:1rem">📍 ${o.delivery_address}${o.distance_km != null ? `<br><span style="font-size:.85rem">${o.delivery_eligible ? '✅' : '🚫'} ${o.distance_km} km from shop${o.delivery_eligible ? '' : ' — outside delivery radius'}</span>` : ''}</div>` : ''}
           <table class="table" style="margin-bottom:1rem">
             <thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Subtotal</th></tr></thead>
             <tbody>

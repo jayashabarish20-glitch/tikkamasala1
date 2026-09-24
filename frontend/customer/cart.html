@@ -46,7 +46,7 @@
 
     <div style="display:flex;gap:1rem;flex-wrap:wrap">
       <button class="btn btn-ghost" onclick="clearCart()">🗑 Clear Cart</button>
-      <a href="/customer/checkout.html" class="btn btn-primary btn-lg" style="flex:1">Proceed to Checkout →</a>
+      <a id="checkout-link" href="/customer/checkout.html" class="btn btn-primary btn-lg" style="flex:1" onclick="goToCheckout(event)">Proceed to Checkout →</a>
     </div>
   </div>
 </div>

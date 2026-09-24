@@ -17,6 +17,7 @@ from app.models.order_item import OrderItem
 from app.models.order_status_history import OrderStatusHistory
 from app.models.payment import Payment
 from app.models.product import Product
+from app.models.inventory import Inventory
 from app.schemas.order import CreateOrderRequest
 from app.utils.jwt import decode_token
 from app.utils.location import haversine_distance
@@ -61,13 +62,23 @@ async def create_order(req: CreateOrderRequest, request: Request, db: AsyncSessi
     # Step 3-4: Validate products + fetch real prices
     subtotal = Decimal("0.00")
     order_items_data = []
+    locked_products = []
     for item in cart_items:
-        prod_result = await db.execute(select(Product).where(Product.id == item.product_id))
+        prod_result = await db.execute(select(Product).where(Product.id == item.product_id).with_for_update())
         product = prod_result.scalars().first()
         if not product:
             raise HTTPException(status_code=400, detail=f"Product {item.product_id} not found.")
-        if not product.is_available:
-            raise HTTPException(status_code=400, detail=f"'{product.name}' is currently unavailable.")
+        if not product.is_available or product.stock_quantity <= 0:
+            raise HTTPException(status_code=400, detail=f"'{product.name}' is currently out of stock.")
+        if item.quantity > product.stock_quantity:
+            raise HTTPException(status_code=400, detail=f"Only {product.stock_quantity} '{product.name}' available; requested {item.quantity}.")
+        product.stock_quantity -= item.quantity
+        product.is_available = product.stock_quantity > 0
+        inventory_result = await db.execute(select(Inventory).where(Inventory.product_id == product.id))
+        inventory = inventory_result.scalars().first()
+        if inventory:
+            inventory.current_stock = product.stock_quantity
+        locked_products.append(product)
         item_subtotal = product.price * item.quantity
         subtotal += Decimal(str(item_subtotal))
         order_items_data.append({
@@ -138,6 +149,8 @@ async def create_order(req: CreateOrderRequest, request: Request, db: AsyncSessi
     db.add(OrderStatusHistory(order_id=order.id, status="NEW", changed_by="system"))
 
     await db.commit()
+    for product in locked_products:
+        await ws_manager.broadcast_inventory({"type": "stock_update", "product_id": product.id, "stock_quantity": product.stock_quantity, "is_available": product.is_available})
     await db.refresh(order)
 
     # Step 9: Clear cart

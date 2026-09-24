@@ -205,9 +205,12 @@
               </div>
             </td>
             <td>
-              <button class="btn btn-outline btn-sm" onclick="openStockModal(${item.product_id}, '${item.product_name}', ${item.current_stock}, ${threshold})">
-                📦 Update
-              </button>
+              <div class="actions">
+                <button class="btn btn-outline btn-sm" onclick="adjustStock(${item.product_id}, ${item.current_stock + 1})">+</button>
+                <button class="btn btn-outline btn-sm" onclick="adjustStock(${item.product_id}, ${Math.max(0, item.current_stock - 1)})">−</button>
+                <button class="btn btn-outline btn-sm" onclick="openStockModal(${item.product_id}, '${item.product_name}', ${item.current_stock}, ${threshold})">Set</button>
+                <button class="btn btn-ghost btn-sm" onclick="toggleAvailability(${item.product_id}, ${item.current_stock}, ${item.is_available})">${item.is_available ? 'Disable' : 'Enable'}</button>
+              </div>
             </td>
           </tr>
         `;
@@ -247,7 +250,7 @@
       const btn = document.getElementById('update-stock-btn');
       setLoading(btn, true, 'Updating...');
       try {
-        await api.patch(`/api/admin/inventory/${productId}`, { current_stock: currentStock, low_stock_threshold: threshold });
+        await api.patch(`/api/admin/inventory/product/${productId}`, { current_stock: currentStock, low_stock_threshold: threshold });
         showToast('Stock updated successfully.', 'success');
         closeStockModal();
         loadInventory();
@@ -255,6 +258,26 @@
         showToast(err.message, 'error');
       } finally {
         setLoading(btn, false, 'Update Stock');
+      }
+    }
+
+    async function adjustStock(productId, quantity) {
+      try {
+        await api.patch(`/api/admin/inventory/product/${productId}`, { current_stock: quantity });
+        showToast('Stock updated successfully.', 'success');
+        loadInventory();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function toggleAvailability(productId, stock, isAvailable) {
+      try {
+        await api.patch(`/api/admin/inventory/product/${productId}`, { is_available: !isAvailable });
+        showToast('Availability updated.', 'success');
+        loadInventory();
+      } catch (err) {
+        showToast(err.message, 'error');
       }
     }
 

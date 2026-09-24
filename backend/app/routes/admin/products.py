@@ -22,7 +22,7 @@ class ProductCreate(BaseModel):
     price: float
     category_id: Optional[int] = None
     image_url: Optional[str] = None
-    stock_quantity: int = 100
+    stock_quantity: int = 0
     is_available: bool = True
     is_featured: bool = False
 
@@ -54,6 +54,10 @@ class CategoryUpdate(BaseModel):
 @router.post("/products")
 async def create_product(req: ProductCreate, request: Request, db: AsyncSession = Depends(get_db)):
     await require_admin(request)
+    if req.stock_quantity < 0:
+        raise HTTPException(status_code=422, detail="Stock quantity cannot be negative.")
+    if req.stock_quantity == 0:
+        req.is_available = False
     product = Product(**req.model_dump())
     db.add(product)
     await db.flush()
@@ -71,8 +75,16 @@ async def update_product(product_id: int, req: ProductUpdate, request: Request, 
     product = result.scalars().first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found.")
+    if req.stock_quantity is not None and req.stock_quantity < 0:
+        raise HTTPException(status_code=422, detail="Stock quantity cannot be negative.")
     for field, value in req.model_dump(exclude_none=True).items():
         setattr(product, field, value)
+    if req.stock_quantity is not None:
+        product.is_available = req.stock_quantity > 0
+        inventory_result = await db.execute(select(Inventory).where(Inventory.product_id == product.id))
+        inventory = inventory_result.scalars().first()
+        if inventory:
+            inventory.current_stock = req.stock_quantity
     await db.commit()
     return {"message": "Product updated."}
 

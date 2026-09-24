@@ -39,6 +39,7 @@ async function handlePlaceOrder() {
 
     if (!address) { showToast('Enter your delivery address.', 'warning'); return; }
     if (!lat || !lng) { showToast('Please use "Get My Location" to set coordinates.', 'warning'); return; }
+    if (_deliveryEligible === false) { showToast('We couldn\'t verify your delivery location. Please check your address and try again.', 'error'); return; }
 
     payload.delivery_address = address;
     payload.delivery_lat = lat;

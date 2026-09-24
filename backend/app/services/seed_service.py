@@ -147,7 +147,7 @@ PRODUCTS = [
         "category": category_name,
         "is_available": True,
         "sort_order": sort_order,
-        "stock_quantity": 100,
+        "stock_quantity": 0,
     }
     for category_name, menu_items in TMCC_MENU.items()
     for sort_order, (name, price) in enumerate(menu_items, 1)
@@ -204,8 +204,13 @@ async def seed_database(db: AsyncSession):
             db.add(inv)
         else:
             for field, value in p_data.items():
+                if field in {"stock_quantity", "is_available"}:
+                    continue
                 setattr(prod, field, value)
             prod.category_id = cat_map.get(category_name)
+            inventory_result = await db.execute(select(Inventory).where(Inventory.product_id == prod.id))
+            if not inventory_result.scalars().first():
+                db.add(Inventory(product_id=prod.id, current_stock=prod.stock_quantity))
 
     await db.commit()
     print("✅ Database seeding complete.")

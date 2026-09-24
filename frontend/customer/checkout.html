@@ -46,11 +46,12 @@
               <button class="btn btn-secondary" id="location-btn" onclick="handleGetLocation()">📍 Use My Current Location</button>
             </div>
             <div id="location-status" class="form-hint mt-1">Click above to auto-detect your location.</div>
+            <div id="delivery-eligibility-status" class="mt-1"></div>
             <input type="hidden" id="delivery-lat">
             <input type="hidden" id="delivery-lng">
           </div>
           <div class="alert alert-info">
-            🛵 Delivery available within <strong>3 km</strong> from our shop. Delivery charge: <strong>₹30</strong>
+            🛵 Delivery available within <strong id="radius-text">5 km</strong> from our shop. Delivery charge: <strong id="delivery-charge-text">₹30</strong>
           </div>
         </div>
       </div>
@@ -103,6 +104,7 @@
   requireCustomerAuth();
   setOrderType('DELIVERY');
   loadCheckoutSummary();
+  loadDeliveryConfig();
   // Update delivery summary when order type changes
   document.getElementById('type-delivery').addEventListener('click', loadCheckoutSummary);
   document.getElementById('type-pickup').addEventListener('click', loadCheckoutSummary);

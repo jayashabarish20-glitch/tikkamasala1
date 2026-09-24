@@ -165,7 +165,7 @@ async function saveProduct(event) {
     price: parseFloat(document.getElementById('p-price').value),
     category_id: parseInt(document.getElementById('p-cat').value) || null,
     image_url: document.getElementById('p-img').value,
-    stock_quantity: parseInt(document.getElementById('p-stock').value) || 100,
+    stock_quantity: parseInt(document.getElementById('p-stock').value) || 0,
     is_available: document.getElementById('p-available').checked,
     is_featured: document.getElementById('p-featured').checked,
   };

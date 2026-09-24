@@ -15,6 +15,8 @@ from app.models.product import Product
 from app.models.user import User
 from app.routes.admin.deps import require_admin
 from app.services.websocket_manager import ws_manager
+from app.config.settings import settings
+from app.utils.location import haversine_distance
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/admin", tags=["Admin"])
@@ -106,6 +108,13 @@ async def get_order(order_id: int, request: Request, db: AsyncSession = Depends(
     pay_result = await db.execute(select(Payment).where(Payment.order_id == order.id))
     payment = pay_result.scalars().first()
 
+    distance_km = None
+    if order.delivery_lat is not None and order.delivery_lng is not None:
+        distance_km = round(haversine_distance(
+            settings.SHOP_LATITUDE, settings.SHOP_LONGITUDE,
+            float(order.delivery_lat), float(order.delivery_lng),
+        ), 2)
+
     return {
         "id": order.id,
         "order_number": order.order_number,
@@ -115,6 +124,8 @@ async def get_order(order_id: int, request: Request, db: AsyncSession = Depends(
         "delivery_address": order.delivery_address,
         "delivery_lat": float(order.delivery_lat) if order.delivery_lat else None,
         "delivery_lng": float(order.delivery_lng) if order.delivery_lng else None,
+        "distance_km": distance_km,
+        "delivery_eligible": (distance_km is not None and distance_km <= settings.DELIVERY_RADIUS_KM) if distance_km is not None else None,
         "subtotal": float(order.subtotal),
         "delivery_fee": float(order.delivery_fee),
         "discount": float(order.discount),

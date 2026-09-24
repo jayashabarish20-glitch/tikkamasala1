@@ -6,6 +6,7 @@ pydantic-settings
 pydantic[email]
 python-jose[cryptography]
 passlib[bcrypt]
+bcrypt==4.0.1
 razorpay
 slowapi
 python-multipart

@@ -41,7 +41,7 @@ class ProductCreate(BaseModel):
     price: float
     category_id: Optional[int] = None
     image_url: Optional[str] = None
-    stock_quantity: int = 100
+    stock_quantity: int = 0
     is_available: bool = True
     is_featured: bool = False
 

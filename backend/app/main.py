@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, RedirectResponse
 
 from app.config.settings import settings
-from app.config.database import engine, AsyncSessionLocal, Base
+from app.config.database import engine, AsyncSessionLocal, Base, migrate_schema
 import app.models  # Import all models so Base knows about them
 
 from app.routes.auth import router as auth_router
@@ -17,6 +17,7 @@ from app.routes.cart import router as cart_router
 from app.routes.orders import router as orders_router
 from app.routes.payments import router as payments_router
 from app.routes.delivery import router as delivery_router
+from app.routes.delivery_check import router as delivery_check_router
 from app.routes.websocket import router as ws_router
 from app.routes.admin.dashboard import router as admin_dashboard_router
 from app.routes.admin.orders import router as admin_orders_router
@@ -49,6 +50,7 @@ app.include_router(cart_router)
 app.include_router(orders_router)
 app.include_router(payments_router)
 app.include_router(delivery_router)
+app.include_router(delivery_check_router)
 app.include_router(ws_router)
 app.include_router(admin_dashboard_router)
 app.include_router(admin_orders_router)
@@ -63,6 +65,7 @@ async def startup():
     # Create all tables
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    await migrate_schema()
     print("✅ Database tables created/verified.")
 
     # Seed initial data
