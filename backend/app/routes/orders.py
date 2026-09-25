@@ -123,13 +123,21 @@ async def create_order(req: CreateOrderRequest, request: Request, db: AsyncSessi
         user_id=user_id,
         order_type=req.order_type,
         delivery_address=req.delivery_address,
+        delivery_house_flat_door=req.delivery_house_flat_door,
+        delivery_street_area=req.delivery_street_area,
+        delivery_city=req.delivery_city,
+        delivery_state=req.delivery_state,
+        delivery_pincode=req.delivery_pincode,
+        delivery_landmark=req.delivery_landmark,
         delivery_lat=Decimal(str(req.delivery_lat)) if req.delivery_lat else None,
         delivery_lng=Decimal(str(req.delivery_lng)) if req.delivery_lng else None,
         subtotal=subtotal,
         delivery_fee=delivery_fee,
         discount=discount,
         total=total,
-        status="NEW",
+        status="PENDING",
+        payment_method=req.payment_method,
+        payment_status="PENDING" if req.payment_method == "COD" else "PENDING",
         notes=req.notes,
     )
     db.add(order)
@@ -146,7 +154,7 @@ async def create_order(req: CreateOrderRequest, request: Request, db: AsyncSessi
         ))
 
     # Step 8: Status history
-    db.add(OrderStatusHistory(order_id=order.id, status="NEW", changed_by="system"))
+    db.add(OrderStatusHistory(order_id=order.id, status="PENDING", changed_by="system"))
 
     await db.commit()
     for product in locked_products:

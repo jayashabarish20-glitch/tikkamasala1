@@ -39,13 +39,33 @@ async def get_db():
 
 
 async def migrate_schema():
-    """Add stock columns to an existing products table without dropping data."""
+    """Add stock columns to products table and delivery address columns to orders table."""
     async with engine.begin() as conn:
-        def existing_columns(sync_conn):
-            return {column["name"] for column in inspect(sync_conn).get_columns("products")}
+        def existing_columns(sync_conn, table_name):
+            return {column["name"] for column in inspect(sync_conn).get_columns(table_name)}
 
-        columns = await conn.run_sync(existing_columns)
-        if "stock_quantity" not in columns:
+        # Products table
+        prod_columns = await conn.run_sync(lambda c: existing_columns(c, "products"))
+        if "stock_quantity" not in prod_columns:
             await conn.execute(text("ALTER TABLE products ADD COLUMN stock_quantity INTEGER NOT NULL DEFAULT 0"))
-        if "is_available" not in columns:
+        if "is_available" not in prod_columns:
             await conn.execute(text("ALTER TABLE products ADD COLUMN is_available BOOLEAN NOT NULL DEFAULT 1"))
+
+        # Orders table - add delivery address fields
+        order_columns = await conn.run_sync(lambda c: existing_columns(c, "orders"))
+        if "delivery_house_flat_door" not in order_columns:
+            await conn.execute(text("ALTER TABLE orders ADD COLUMN delivery_house_flat_door VARCHAR(100)"))
+        if "delivery_street_area" not in order_columns:
+            await conn.execute(text("ALTER TABLE orders ADD COLUMN delivery_street_area VARCHAR(200)"))
+        if "delivery_city" not in order_columns:
+            await conn.execute(text("ALTER TABLE orders ADD COLUMN delivery_city VARCHAR(100)"))
+        if "delivery_state" not in order_columns:
+            await conn.execute(text("ALTER TABLE orders ADD COLUMN delivery_state VARCHAR(100)"))
+        if "delivery_pincode" not in order_columns:
+            await conn.execute(text("ALTER TABLE orders ADD COLUMN delivery_pincode VARCHAR(10)"))
+        if "delivery_landmark" not in order_columns:
+            await conn.execute(text("ALTER TABLE orders ADD COLUMN delivery_landmark VARCHAR(200)"))
+        if "payment_method" not in order_columns:
+            await conn.execute(text("ALTER TABLE orders ADD COLUMN payment_method VARCHAR(20) DEFAULT 'ONLINE'"))
+        if "payment_status" not in order_columns:
+            await conn.execute(text("ALTER TABLE orders ADD COLUMN payment_status VARCHAR(20) DEFAULT 'PENDING'"))

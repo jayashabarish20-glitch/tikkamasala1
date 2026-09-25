@@ -1,3 +1,4 @@
+
 from sqlalchemy import Column, Integer, ForeignKey, DateTime, func, UniqueConstraint
 from app.config.database import Base
 

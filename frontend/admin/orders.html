@@ -144,12 +144,16 @@
 
   <!-- Order Detail Modal -->
   <div class="modal-overlay hidden" id="order-detail-modal">
-    <div class="modal" style="max-width:620px">
+    <div class="modal" style="max-width:720px">
       <div class="modal-header">
         <div class="modal-title" id="order-detail-title">Order Details</div>
         <button class="modal-close" onclick="document.getElementById('order-detail-modal').classList.add('hidden')">×</button>
       </div>
       <div class="modal-body" id="order-detail-body">Loading...</div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="document.getElementById('order-detail-modal').classList.add('hidden')">Close</button>
+        <button id="whatsapp-btn" class="btn btn-outline" onclick="shareOrderOnWhatsApp()" title="Share delivery details on WhatsApp">📲 Share on WhatsApp</button>
+      </div>
     </div>
   </div>
 
@@ -224,6 +228,8 @@
       renderOrders(allOrders);
     }
 
+    let _currentOrderDetail = null; // Store for WhatsApp sharing
+
     async function viewOrderDetail(orderId) {
       const modal = document.getElementById('order-detail-modal');
       const body = document.getElementById('order-detail-body');
@@ -231,31 +237,115 @@
       body.innerHTML = '<div class="text-center" style="padding:2rem"><span class="spinner"></span></div>';
       try {
         const o = await api.get(`/api/admin/orders/${orderId}`);
+        _currentOrderDetail = o; // Store for WhatsApp
         document.getElementById('order-detail-title').textContent = `Order ${o.order_number}`;
+
+        // Build delivery info section
+        let deliverySection = '';
+        if (o.order_type === 'DELIVERY') {
+          deliverySection = `
+            <div style="margin-bottom:1.5rem;padding-bottom:1.5rem;border-bottom:1px solid var(--border)">
+              <div style="font-size:.9rem;font-weight:600;color:var(--text-muted);margin-bottom:.75rem">📍 DELIVERY INFORMATION</div>
+              <div style="font-size:.85rem;line-height:1.6">
+                <div><strong>Full Address:</strong></div>
+                <div style="color:var(--text-muted);margin-bottom:1rem">${o.delivery_address || 'Not provided'}</div>
+                ${o.delivery_pincode ? `<div><strong>Pincode:</strong> ${o.delivery_pincode}</div>` : ''}
+                ${o.delivery_landmark ? `<div><strong>Landmark:</strong> ${o.delivery_landmark}</div>` : ''}
+                ${o.delivery_lat && o.delivery_lng ? `
+                  <div style="margin-top:.75rem">
+                    <strong>Location:</strong> ${o.delivery_lat.toFixed(6)}, ${o.delivery_lng.toFixed(6)}
+                    ${o.distance_km !== null ? `<div style="font-size:.8rem;color:var(--text-muted);">${o.delivery_eligible ? '✅' : '🚫'} ${o.distance_km} km from shop</div>` : ''}
+                  </div>
+                  ${o.google_maps_link ? `<div style="margin-top:.5rem"><a href="${o.google_maps_link}" target="_blank" class="btn btn-ghost btn-sm">🗺️ Open Location in Google Maps</a></div>` : ''}
+                ` : ''}
+              </div>
+            </div>
+          `;
+        }
+
         body.innerHTML = `
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
-            <div><div class="text-muted" style="font-size:.8rem">Customer</div><div style="font-weight:600">${o.customer_name}</div><div class="text-muted" style="font-size:.85rem">${o.customer_mobile}</div></div>
-            <div><div class="text-muted" style="font-size:.8rem">Order Type</div><div style="font-weight:600">${o.order_type}</div></div>
-            <div><div class="text-muted" style="font-size:.8rem">Status</div><span class="badge status-${o.status}">${o.status.replace(/_/g,' ')}</span></div>
-            <div><div class="text-muted" style="font-size:.8rem">Payment</div><span class="badge badge-${o.payment_status==='PAID'?'success':'warning'}">${o.payment_status||'—'}</span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;padding-bottom:1.5rem;border-bottom:1px solid var(--border)">
+            <div>
+              <div class="text-muted" style="font-size:.8rem">Customer</div>
+              <div style="font-weight:600">${o.customer_name}</div>
+              <div class="text-muted" style="font-size:.85rem">${o.customer_mobile}</div>
+            </div>
+            <div>
+              <div class="text-muted" style="font-size:.8rem">Order Type</div>
+              <div style="font-weight:600">${o.order_type}</div>
+            </div>
+            <div>
+              <div class="text-muted" style="font-size:.8rem">Status</div>
+              <span class="badge status-${o.status}">${o.status.replace(/_/g,' ')}</span>
+            </div>
+            <div>
+              <div class="text-muted" style="font-size:.8rem">Payment Method</div>
+              <div style="font-weight:600">${o.payment_method === 'COD' ? '💵 Cash on Delivery' : '💳 Online Payment'}</div>
+            </div>
+            <div>
+              <div class="text-muted" style="font-size:.8rem">Payment Status</div>
+              <span class="badge badge-${o.payment_status==='PAID'?'success':'warning'}">${o.payment_status||'—'}</span>
+            </div>
           </div>
-          ${o.delivery_address ? `<div class="alert alert-info" style="margin-bottom:1rem">📍 ${o.delivery_address}${o.distance_km != null ? `<br><span style="font-size:.85rem">${o.delivery_eligible ? '✅' : '🚫'} ${o.distance_km} km from shop${o.delivery_eligible ? '' : ' — outside delivery radius'}</span>` : ''}</div>` : ''}
-          <table class="table" style="margin-bottom:1rem">
-            <thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Subtotal</th></tr></thead>
-            <tbody>
-              ${(o.items||[]).map(i=>`<tr><td>${i.product_name}</td><td>${i.quantity}</td><td>${formatPrice(i.unit_price)}</td><td>${formatPrice(i.subtotal)}</td></tr>`).join('')}
-            </tbody>
-          </table>
-          <div style="text-align:right">
+          ${deliverySection}
+          <div style="margin-bottom:1.5rem">
+            <div style="font-size:.9rem;font-weight:600;color:var(--text-muted);margin-bottom:.75rem">📦 ORDER ITEMS</div>
+            <table class="table" style="margin-bottom:1rem">
+              <thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Subtotal</th></tr></thead>
+              <tbody>
+                ${(o.items||[]).map(i=>`<tr><td>${i.product_name}</td><td>${i.quantity}</td><td>${formatPrice(i.unit_price)}</td><td>${formatPrice(i.subtotal)}</td></tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+          <div style="text-align:right;padding-top:1rem;border-top:1px solid var(--border)">
             <div class="text-muted" style="font-size:.85rem">Subtotal: ${formatPrice(o.subtotal)}</div>
             ${o.delivery_fee ? `<div class="text-muted" style="font-size:.85rem">Delivery: ${formatPrice(o.delivery_fee)}</div>` : ''}
             ${o.discount ? `<div class="text-muted" style="font-size:.85rem">Discount: -${formatPrice(o.discount)}</div>` : ''}
-            <div style="font-size:1.2rem;font-weight:800;color:var(--primary)">Total: ${formatPrice(o.total)}</div>
+            <div style="font-size:1.2rem;font-weight:800;color:var(--primary);margin-top:.5rem">Total: ${formatPrice(o.total)}</div>
           </div>
         `;
       } catch(err) {
         body.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
       }
+    }
+
+    function shareOrderOnWhatsApp() {
+      if (!_currentOrderDetail) {
+        showToast('Order details not loaded', 'warning');
+        return;
+      }
+
+      const o = _currentOrderDetail;
+      const statusDisplay = o.status.replace(/_/g, ' ');
+      const paymentMethod = o.payment_method === 'COD' ? 'Cash on Delivery' : 'Online Payment';
+
+      let message = `*Tikka Masala Chat Corner*\n\n`;
+      message += `*Order Details:*\n`;
+      message += `Order ID: #${o.order_number}\n\n`;
+      message += `*Customer:*\n`;
+      message += `${o.customer_name}\n`;
+      message += `Mobile: ${o.customer_mobile}\n\n`;
+
+      if (o.order_type === 'DELIVERY') {
+        message += `*Delivery Address:*\n`;
+        message += `${o.delivery_address || 'Not provided'}\n`;
+        if (o.delivery_pincode) message += `Pincode: ${o.delivery_pincode}\n`;
+        if (o.delivery_landmark) message += `Landmark: ${o.delivery_landmark}\n`;
+        if (o.google_maps_link) message += `Location: ${o.google_maps_link}\n`;
+        message += `\n`;
+      }
+
+      message += `*Order Items:*\n`;
+      (o.items || []).forEach(item => {
+        message += `• ${item.product_name} × ${item.quantity}\n`;
+      });
+
+      message += `\n*Order Total:* ₹${Number(o.total).toFixed(2)}\n`;
+      message += `*Payment Method:* ${paymentMethod}\n`;
+      message += `*Status:* ${statusDisplay}\n`;
+
+      const whatsappUrl = `https://wa.me/${o.customer_mobile}?text=${encodeURIComponent(message)}`;
+      window.open(whatsappUrl, '_blank');
     }
 
     loadAdminOrders();

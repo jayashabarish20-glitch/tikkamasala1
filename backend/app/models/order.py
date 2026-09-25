@@ -30,13 +30,21 @@ class Order(Base):
     address_id = Column(Integer, ForeignKey("addresses.id"), nullable=True)
     order_type = Column(String(20), default="DELIVERY")  # DELIVERY or PICKUP
     delivery_address = Column(Text, nullable=True)
+    delivery_house_flat_door = Column(String(100), nullable=True)
+    delivery_street_area = Column(String(200), nullable=True)
+    delivery_city = Column(String(100), nullable=True)
+    delivery_state = Column(String(100), nullable=True)
+    delivery_pincode = Column(String(10), nullable=True)
+    delivery_landmark = Column(String(200), nullable=True)
     delivery_lat = Column(DECIMAL(10, 7), nullable=True)
     delivery_lng = Column(DECIMAL(10, 7), nullable=True)
     subtotal = Column(DECIMAL(10, 2), nullable=False)
     delivery_fee = Column(DECIMAL(10, 2), default=0)
     discount = Column(DECIMAL(10, 2), default=0)
     total = Column(DECIMAL(10, 2), nullable=False)
-    status = Column(String(30), default="NEW")
+    status = Column(String(30), default="PENDING")  # PENDING, ACCEPTED, PREPARING, READY, OUT_FOR_DELIVERY, DELIVERED, CANCELLED
+    payment_method = Column(String(20), default="ONLINE")  # ONLINE or COD
+    payment_status = Column(String(20), default="PENDING")  # PENDING, PAID, FAILED
     delivery_otp = Column(String(10), nullable=True)
     otp_expires_at = Column(DateTime, nullable=True)
     otp_attempts = Column(Integer, default=0)

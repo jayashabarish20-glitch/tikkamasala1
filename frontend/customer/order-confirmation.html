@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Order Confirmation — Tikka Masala Chat Corner</title>
+  <link rel="stylesheet" href="/css/main.css?v=4">
+  <link rel="stylesheet" href="/css/customer.css?v=4">
+  <style>
+    .confirmation-icon {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+      animation: bounce 0.6s ease-in-out;
+    }
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+  </style>
+</head>
+<body>
+<nav class="navbar" aria-label="Customer"></nav>
+
+<div class="container" style="padding-top:2rem;padding-bottom:4rem">
+  <div style="max-width:600px;margin:0 auto;text-align:center">
+    <!-- Success Message -->
+    <div class="confirmation-icon">✅</div>
+    <h1 style="margin-bottom:0.5rem">Order Confirmed!</h1>
+    <p style="color:var(--text-muted);margin-bottom:2rem">Your order has been successfully placed.</p>
+
+    <!-- Order Details -->
+    <div class="card mb-2">
+      <div class="card-body" style="text-align:left">
+        <h3 style="margin-bottom:1rem;text-align:center">Order Details</h3>
+
+        <div style="margin-bottom:1rem">
+          <div class="text-muted" style="font-size:.85rem">Order ID</div>
+          <div style="font-weight:600;font-size:1.1rem" id="conf-order-number">—</div>
+        </div>
+
+        <div style="margin-bottom:1rem">
+          <div class="text-muted" style="font-size:.85rem">Order Total</div>
+          <div style="font-weight:600;font-size:1.2rem;color:var(--primary)" id="conf-total">—</div>
+        </div>
+
+        <div style="margin-bottom:1rem;padding-top:1rem;border-top:1px solid var(--border)">
+          <div class="text-muted" style="font-size:.85rem">Payment Method</div>
+          <div style="font-weight:600" id="conf-payment-method">—</div>
+        </div>
+
+        <div style="padding-top:1rem;border-top:1px solid var(--border)">
+          <div class="text-muted" style="font-size:.85rem;margin-bottom:.5rem">Status</div>
+          <div style="display:flex;gap:.5rem;align-items:center">
+            <span class="badge badge-secondary">PENDING</span>
+            <span style="color:var(--text-muted);font-size:.85rem">Waiting to be accepted</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- What's Next -->
+    <div class="card mb-2">
+      <div class="card-body" style="text-align:left">
+        <h3 style="margin-bottom:1rem;text-align:center">What's Next?</h3>
+        <ol style="margin:0;padding-left:1.5rem;color:var(--text-muted)">
+          <li style="margin-bottom:.75rem">Our restaurant will review your order</li>
+          <li style="margin-bottom:.75rem">You'll receive a confirmation via phone</li>
+          <li style="margin-bottom:.75rem">Your food will be prepared</li>
+          <li style="margin-bottom:.75rem">Driver will be assigned for delivery</li>
+          <li>Pay cash to the delivery person</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div style="display:flex;gap:1rem;margin-top:2rem">
+      <a href="/customer/my-orders.html" class="btn btn-primary" style="flex:1">📋 View My Orders</a>
+      <a href="/customer/home.html" class="btn btn-ghost" style="flex:1">🏠 Back to Home</a>
+    </div>
+
+    <!-- Helpful Info -->
+    <div class="alert alert-info" style="margin-top:2rem;text-align:left;font-size:.9rem">
+      <strong>💡 Tip:</strong> You can track your order status anytime by visiting "My Orders" page. Estimated delivery time: 30-45 minutes from order confirmation.
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script src="/js/api.js?v=4"></script>
+<script src="/js/auth.js"></script>
+<script>
+  requireCustomerAuth();
+
+  const orderId = sessionStorage.getItem('recent_order_id');
+  const orderNumber = sessionStorage.getItem('recent_order_number');
+  const total = sessionStorage.getItem('recent_order_total');
+  const paymentMethod = sessionStorage.getItem('recent_payment_method');
+
+  if (!orderId) {
+    showToast('No recent order found.', 'error');
+    setTimeout(() => window.location.href = '/customer/home.html', 2000);
+  } else {
+    document.getElementById('conf-order-number').textContent = orderNumber || '—';
+    document.getElementById('conf-total').textContent = formatPrice(total);
+    document.getElementById('conf-payment-method').textContent = paymentMethod === 'COD' ? '💵 Cash on Delivery' : paymentMethod || '—';
+
+    // Clear session data
+    sessionStorage.removeItem('recent_order_id');
+    sessionStorage.removeItem('recent_order_number');
+    sessionStorage.removeItem('recent_order_total');
+    sessionStorage.removeItem('recent_payment_method');
+  }
+</script>
+</body>
+</html>

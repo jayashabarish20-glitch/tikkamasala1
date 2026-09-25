@@ -58,6 +58,11 @@ async def list_orders(request: Request, db: AsyncSession = Depends(get_db)):
                 "quantity": item.quantity,
                 "unit_price": float(item.unit_price),
             })
+        # Generate Google Maps link if coordinates available
+        google_maps_link = None
+        if o.delivery_lat is not None and o.delivery_lng is not None:
+            google_maps_link = f"https://www.google.com/maps?q={float(o.delivery_lat)},{float(o.delivery_lng)}"
+
         out.append({
             "id": o.id,
             "order_number": o.order_number,
@@ -65,11 +70,15 @@ async def list_orders(request: Request, db: AsyncSession = Depends(get_db)):
             "customer_mobile": user.mobile if user else "",
             "order_type": o.order_type,
             "delivery_address": o.delivery_address,
+            "delivery_pincode": o.delivery_pincode,
+            "delivery_landmark": o.delivery_landmark,
+            "google_maps_link": google_maps_link,
             "subtotal": float(o.subtotal),
             "delivery_fee": float(o.delivery_fee),
             "total": float(o.total),
             "status": o.status,
-            "payment_status": payment.status if payment else "PENDING",
+            "payment_method": o.payment_method,
+            "payment_status": o.payment_status or (payment.status if payment else "PENDING"),
             "items": items_data,
             "created_at": o.created_at.isoformat() if o.created_at else None,
         })
@@ -115,6 +124,11 @@ async def get_order(order_id: int, request: Request, db: AsyncSession = Depends(
             float(order.delivery_lat), float(order.delivery_lng),
         ), 2)
 
+    # Generate Google Maps link if coordinates available
+    google_maps_link = None
+    if order.delivery_lat is not None and order.delivery_lng is not None:
+        google_maps_link = f"https://www.google.com/maps?q={float(order.delivery_lat)},{float(order.delivery_lng)}"
+
     return {
         "id": order.id,
         "order_number": order.order_number,
@@ -122,8 +136,15 @@ async def get_order(order_id: int, request: Request, db: AsyncSession = Depends(
         "customer_mobile": user.mobile if user else "",
         "order_type": order.order_type,
         "delivery_address": order.delivery_address,
+        "delivery_house_flat_door": order.delivery_house_flat_door,
+        "delivery_street_area": order.delivery_street_area,
+        "delivery_city": order.delivery_city,
+        "delivery_state": order.delivery_state,
+        "delivery_pincode": order.delivery_pincode,
+        "delivery_landmark": order.delivery_landmark,
         "delivery_lat": float(order.delivery_lat) if order.delivery_lat else None,
         "delivery_lng": float(order.delivery_lng) if order.delivery_lng else None,
+        "google_maps_link": google_maps_link,
         "distance_km": distance_km,
         "delivery_eligible": (distance_km is not None and distance_km <= settings.DELIVERY_RADIUS_KM) if distance_km is not None else None,
         "subtotal": float(order.subtotal),
@@ -131,7 +152,8 @@ async def get_order(order_id: int, request: Request, db: AsyncSession = Depends(
         "discount": float(order.discount),
         "total": float(order.total),
         "status": order.status,
-        "payment_status": payment.status if payment else "PENDING",
+        "payment_method": order.payment_method,
+        "payment_status": order.payment_status or (payment.status if payment else "PENDING"),
         "items": items_data,
         "history": history,
         "notes": order.notes,

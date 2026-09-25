@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payment Method — Tikka Masala Chat Corner</title>
+  <link rel="stylesheet" href="/css/main.css?v=4">
+  <link rel="stylesheet" href="/css/customer.css?v=4">
+</head>
+<body>
+<nav class="navbar" aria-label="Customer"></nav>
+
+<div class="container" style="padding-top:2rem;padding-bottom:4rem">
+  <h1 style="margin-bottom:1.5rem">💳 Payment Method</h1>
+
+  <div style="max-width:600px;margin:0 auto">
+    <!-- Order Summary -->
+    <div class="card mb-2">
+      <div class="card-body">
+        <h3 style="margin-bottom:1rem">Order Summary</h3>
+        <div id="payment-items" style="margin-bottom:1rem"></div>
+        <div class="order-summary-row"><span>Subtotal</span><span id="payment-subtotal">—</span></div>
+        <div class="order-summary-row"><span>Delivery fee</span><span id="payment-delivery">₹30</span></div>
+        <div class="order-summary-row"><span>Discount</span><span>₹0</span></div>
+        <div class="order-summary-row total"><span>Total</span><span class="amount" id="payment-total">—</span></div>
+      </div>
+    </div>
+
+    <!-- Payment Methods -->
+    <div class="card mb-2">
+      <div class="card-body">
+        <h3 style="margin-bottom:1.5rem">Select Payment Method</h3>
+
+        <!-- Cash on Delivery -->
+        <div style="margin-bottom:1.5rem;padding:1.5rem;border:2px solid #ddd;border-radius:8px;cursor:pointer;transition:all 0.3s" id="cod-option" onclick="selectPaymentMethod('COD')">
+          <div style="display:flex;align-items:center;gap:1rem">
+            <input type="radio" id="payment-cod" name="payment-method" value="COD" onchange="selectPaymentMethod('COD')" style="width:24px;height:24px;cursor:pointer">
+            <div style="flex:1">
+              <label for="payment-cod" style="cursor:pointer;font-weight:600;font-size:1.1rem;margin:0">💵 Cash on Delivery</label>
+              <p style="margin:.5rem 0 0 0;color:var(--text-muted);font-size:.9rem">Pay with cash when your order arrives</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Online Payment -->
+        <div style="margin-bottom:0;padding:1.5rem;border:2px solid #ddd;border-radius:8px;cursor:pointer;transition:all 0.3s;opacity:0.5" id="online-option" onclick="selectPaymentMethod('ONLINE')" title="Coming soon">
+          <div style="display:flex;align-items:center;gap:1rem">
+            <input type="radio" id="payment-online" name="payment-method" value="ONLINE" onchange="selectPaymentMethod('ONLINE')" style="width:24px;height:24px;cursor:pointer" disabled>
+            <div style="flex:1">
+              <label for="payment-online" style="cursor:pointer;font-weight:600;font-size:1.1rem;margin:0;color:#999">💳 Online Payment (Coming Soon)</label>
+              <p style="margin:.5rem 0 0 0;color:var(--text-muted);font-size:.9rem">Credit/Debit Card, UPI, Wallet</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div style="display:flex;gap:1rem;margin-top:2rem">
+      <a href="/customer/checkout.html" class="btn btn-ghost" style="flex:1">← Back</a>
+      <button id="place-order-btn" class="btn btn-primary" style="flex:1;opacity:0.5;cursor:not-allowed" onclick="handlePlaceOrder()" disabled>
+        Place Order
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<div id="loading-overlay" class="loading-overlay hidden">
+  <div style="text-align:center">
+    <div class="spinner" style="width:3rem;height:3rem;border-width:4px"></div>
+    <p style="margin-top:1rem;font-weight:600">Creating your order...</p>
+  </div>
+</div>
+
+<script src="/js/api.js?v=4"></script>
+<script src="/js/auth.js"></script>
+<script src="/js/cart.js?v=4"></script>
+<script src="/js/customer-nav.js?v=4"></script>
+<script src="/js/payment-method.js"></script>
+<script>
+  requireCustomerAuth();
+  loadPaymentMethodSummary();
+</script>
+</body>
+</html>

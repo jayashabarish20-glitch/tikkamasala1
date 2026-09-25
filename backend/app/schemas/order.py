@@ -18,8 +18,15 @@ class OrderItemResponse(BaseModel):
 class CreateOrderRequest(BaseModel):
     order_type: str = "DELIVERY"   # DELIVERY | PICKUP
     delivery_address: Optional[str] = None
+    delivery_house_flat_door: Optional[str] = None
+    delivery_street_area: Optional[str] = None
+    delivery_city: Optional[str] = None
+    delivery_state: Optional[str] = None
+    delivery_pincode: Optional[str] = None
+    delivery_landmark: Optional[str] = None
     delivery_lat: Optional[float] = None
     delivery_lng: Optional[float] = None
+    payment_method: str = "ONLINE"  # ONLINE | COD
     notes: Optional[str] = None
 
 

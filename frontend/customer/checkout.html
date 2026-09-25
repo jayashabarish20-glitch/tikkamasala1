@@ -35,22 +35,80 @@
       <!-- Delivery section -->
       <div id="delivery-section" class="card mb-2">
         <div class="card-body">
-          <h3 style="margin-bottom:1rem">Delivery Address</h3>
-          <div class="form-group">
-            <label class="form-label">Full Address</label>
-            <textarea class="form-control" id="delivery-address" rows="3" placeholder="House/flat number, street, landmark..."></textarea>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Location Coordinates</label>
-            <div class="location-btn-group">
-              <button class="btn btn-secondary" id="location-btn" onclick="handleGetLocation()">📍 Use My Current Location</button>
+          <h3 style="margin-bottom:1.5rem">📍 Delivery Address</h3>
+
+          <!-- Customer Details Section -->
+          <div style="margin-bottom:1.5rem;padding-bottom:1.5rem;border-bottom:1px solid var(--border)">
+            <h4 style="margin-bottom:1rem;font-size:.95rem;color:var(--text-muted)">CUSTOMER DETAILS</h4>
+            <div class="form-group">
+              <label class="form-label">Full Name *</label>
+              <input type="text" class="form-control" id="customer-name" placeholder="Your full name" required>
             </div>
-            <div id="location-status" class="form-hint mt-1">Click above to auto-detect your location.</div>
-            <div id="delivery-eligibility-status" class="mt-1"></div>
+            <div class="form-group">
+              <label class="form-label">Mobile Number *</label>
+              <input type="tel" class="form-control" id="customer-mobile" placeholder="Your mobile number" required>
+            </div>
+          </div>
+
+          <!-- Address Entry Method -->
+          <div style="margin-bottom:1.5rem">
+            <h4 style="margin-bottom:1rem;font-size:.95rem;color:var(--text-muted)">DELIVERY ADDRESS</h4>
+            <div style="display:flex;gap:1rem;margin-bottom:1rem">
+              <button id="manual-address-btn" class="btn btn-primary" onclick="setAddressMode('manual')" style="flex:1">✏️ Type Address</button>
+              <button id="gps-address-btn" class="btn btn-outline" onclick="setAddressMode('gps')" style="flex:1">📍 Use My Location</button>
+            </div>
+          </div>
+
+          <!-- Manual Address Form -->
+          <div id="manual-address-section">
+            <div class="form-group">
+              <label class="form-label">House / Flat / Door No *</label>
+              <input type="text" class="form-control" id="delivery-house-flat-door" placeholder="e.g., 12/3, Apartment 4B">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Street / Area *</label>
+              <input type="text" class="form-control" id="delivery-street-area" placeholder="e.g., ABC Street, Purasawalkam">
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+              <div class="form-group">
+                <label class="form-label">City *</label>
+                <input type="text" class="form-control" id="delivery-city" placeholder="e.g., Chennai">
+              </div>
+              <div class="form-group">
+                <label class="form-label">State *</label>
+                <input type="text" class="form-control" id="delivery-state" placeholder="e.g., Tamil Nadu">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Pincode *</label>
+              <input type="text" class="form-control" id="delivery-pincode" placeholder="e.g., 600012" maxlength="6">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Landmark (optional)</label>
+              <input type="text" class="form-control" id="delivery-landmark" placeholder="e.g., Near XYZ Hospital, behind the temple">
+            </div>
+            <input type="hidden" id="delivery-address">
             <input type="hidden" id="delivery-lat">
             <input type="hidden" id="delivery-lng">
           </div>
-          <div class="alert alert-info">
+
+          <!-- GPS Address Section -->
+          <div id="gps-address-section" class="hidden">
+            <div class="alert alert-info" style="margin-bottom:1rem">
+              📍 Click the button below to use your current location. Make sure location permission is enabled in your browser.
+            </div>
+            <button class="btn btn-secondary btn-block" id="location-btn" onclick="handleGetLocation()" style="margin-bottom:1rem">📍 Get My Current Location</button>
+            <div id="location-status" class="form-hint" style="margin-bottom:1rem">Click above to auto-detect your location.</div>
+            <div id="delivery-eligibility-status" style="margin-bottom:1rem"></div>
+            <div id="gps-address-display" class="alert alert-success hidden" style="margin-bottom:1rem">
+              <div style="margin-bottom:.5rem"><strong>Location Detected:</strong></div>
+              <div id="gps-coordinates" style="font-size:.85rem;font-family:monospace;margin-bottom:.5rem"></div>
+              <div id="gps-maps-link" style="margin-top:.5rem"></div>
+            </div>
+          </div>
+
+          <!-- Delivery Info -->
+          <div class="alert alert-info" style="margin-top:1.5rem">
             🛵 Delivery available within <strong id="radius-text">5 km</strong> from our shop. Delivery charge: <strong id="delivery-charge-text">₹30</strong>
           </div>
         </div>
@@ -77,10 +135,10 @@
           <div class="order-summary-row"><span>Delivery fee</span><span id="checkout-delivery">₹30</span></div>
           <div class="order-summary-row"><span>Discount</span><span>₹0</span></div>
           <div class="order-summary-row total"><span>Total</span><span class="amount" id="checkout-total">—</span></div>
-          <button class="btn btn-primary btn-block btn-lg mt-2" id="place-order-btn" onclick="handlePlaceOrder()">
-            🔒 Place Order & Pay
+          <button class="btn btn-primary btn-block btn-lg mt-2" id="continue-btn" onclick="handleContinueToPayment()">
+            Continue to Payment →
           </button>
-          <p class="text-muted text-center" style="font-size:.78rem;margin-top:.75rem">Secure payment via Razorpay</p>
+          <p class="text-muted text-center" style="font-size:.78rem;margin-top:.75rem">Next step: Select payment method</p>
         </div>
       </div>
     </div>
@@ -98,11 +156,13 @@
 <script src="/js/auth.js"></script>
 <script src="/js/cart.js?v=4"></script>
 <script src="/js/customer-nav.js?v=4"></script>
-<script src="/js/location.js"></script>
-<script src="/js/checkout.js"></script>
+<script src="/js/location.js?v=1"></script>
+<script src="/js/checkout.js?v=1"></script>
 <script>
   requireCustomerAuth();
+  loadCustomerDetails();
   setOrderType('DELIVERY');
+  setAddressMode('manual');
   loadCheckoutSummary();
   loadDeliveryConfig();
   // Update delivery summary when order type changes

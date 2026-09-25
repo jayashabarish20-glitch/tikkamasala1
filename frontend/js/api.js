@@ -1,7 +1,11 @@
 /**
  * API client — wraps fetch with auth headers + error handling.
  */
-const API_BASE = '';
+const API_BASE = (() => {
+  const host = window.location.hostname;
+  const port = 8000;
+  return `http://${host}:${port}`;
+})();
 
 const api = {
   getToken() {
