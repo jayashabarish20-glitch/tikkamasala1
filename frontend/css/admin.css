@@ -13,7 +13,7 @@ body.admin-body {
 
 /* Sidebar */
 .sidebar {
-  width: 260px;
+  width: 270px;
   background: var(--secondary);
   flex-shrink: 0;
   display: flex;
