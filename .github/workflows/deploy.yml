@@ -71,6 +71,7 @@ jobs:
             -o BatchMode=yes \
             -o ConnectTimeout=15 \
             "ubuntu@$EC2_HOST" 'bash -s' <<'REMOTE_SCRIPT'
+
           set -e
 
           echo "========================================"
@@ -157,12 +158,12 @@ jobs:
             exit 1
           fi
 
-          echo
+          echo ""
           echo "========================================"
           echo "      DEPLOYMENT SUCCESSFUL"
           echo "========================================"
 
-REMOTE_SCRIPT
+          REMOTE_SCRIPT
 
       - name: Cleanup SSH key
         if: always()
