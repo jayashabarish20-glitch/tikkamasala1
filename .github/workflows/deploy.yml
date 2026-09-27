@@ -1,3 +1,4 @@
+```yaml
 name: Deploy Tikka Masala
 
 on:
@@ -18,30 +19,60 @@ jobs:
 
     steps:
 
+      # --------------------------------------------------
+      # 1. Prepare SSH private key
+      # --------------------------------------------------
       - name: Prepare SSH key
         env:
           EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
         run: |
+          if [ -z "$EC2_SSH_KEY" ]; then
+            echo "ERROR: EC2_SSH_KEY secret is missing"
+            exit 1
+          fi
+
           mkdir -p ~/.ssh
+
           printf '%s\n' "$EC2_SSH_KEY" > ~/.ssh/tikkamasala.pem
+
           chmod 600 ~/.ssh/tikkamasala.pem
 
+      # --------------------------------------------------
+      # 2. Add EC2 host to known_hosts
+      # --------------------------------------------------
       - name: Add EC2 to known hosts
         env:
           EC2_HOST: ${{ secrets.EC2_HOST }}
         run: |
+          if [ -z "$EC2_HOST" ]; then
+            echo "ERROR: EC2_HOST secret is missing"
+            exit 1
+          fi
+
           ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
 
+      # --------------------------------------------------
+      # 3. Test SSH connection
+      # --------------------------------------------------
       - name: Test SSH connection
         env:
           EC2_HOST: ${{ secrets.EC2_HOST }}
           EC2_USERNAME: ${{ secrets.EC2_USERNAME }}
         run: |
+          if [ -z "$EC2_USERNAME" ]; then
+            echo "ERROR: EC2_USERNAME secret is missing"
+            exit 1
+          fi
+
           ssh \
             -i ~/.ssh/tikkamasala.pem \
+            -o StrictHostKeyChecking=yes \
             "$EC2_USERNAME@$EC2_HOST" \
-            "echo SSH connection successful"
+            "echo 'SSH connection successful'"
 
+      # --------------------------------------------------
+      # 4. Deploy latest code to EC2
+      # --------------------------------------------------
       - name: Deploy application
         env:
           EC2_HOST: ${{ secrets.EC2_HOST }}
@@ -49,46 +80,141 @@ jobs:
         run: |
           ssh \
             -i ~/.ssh/tikkamasala.pem \
+            -o StrictHostKeyChecking=yes \
             "$EC2_USERNAME@$EC2_HOST" << 'EOF'
 
           set -e
 
-          echo "================================"
-          echo "Starting deployment..."
-          echo "================================"
+          echo "========================================"
+          echo "      TIKKA MASALA DEPLOYMENT"
+          echo "========================================"
 
-          cd /home/ubuntu/tikkamasala
+          APP_DIR="/home/ubuntu/tikkamasala1"
+          REPO_URL="https://github.com/jayashabarish20-glitch/tikkamasala1.git"
 
+          # --------------------------------------------------
+          # Check application directory
+          # --------------------------------------------------
+          if [ ! -d "$APP_DIR/.git" ]; then
+              echo "Application directory not found."
+              echo "Cloning repository..."
+
+              rm -rf "$APP_DIR"
+
+              git clone "$REPO_URL" "$APP_DIR"
+          fi
+
+          cd "$APP_DIR"
+
+          echo "Application directory:"
+          pwd
+
+          # --------------------------------------------------
+          # Pull latest code
+          # --------------------------------------------------
           echo "Pulling latest code..."
 
           git fetch origin main
           git reset --hard origin/main
 
+          # --------------------------------------------------
+          # Verify required files
+          # --------------------------------------------------
+          echo "Checking project files..."
+
+          test -f docker-compose.yml
+          test -f backend/Dockerfile
+          test -f frontend/Dockerfile
+
+          # --------------------------------------------------
+          # IMPORTANT:
+          # Do NOT overwrite the EC2 .env file.
+          # It contains environment-specific secrets/config.
+          # --------------------------------------------------
+
+          if [ ! -f .env ]; then
+              echo "ERROR: /home/ubuntu/tikkamasala1/.env not found"
+              echo "Create the .env file on EC2 before deploying."
+              exit 1
+          fi
+
+          # --------------------------------------------------
+          # Build and start containers
+          # --------------------------------------------------
           echo "Building Docker images..."
 
           docker compose up -d --build --remove-orphans
 
-          echo "Checking containers..."
+          # --------------------------------------------------
+          # Show container status
+          # --------------------------------------------------
+          echo "Container status:"
 
           docker compose ps
 
+          # --------------------------------------------------
+          # Backend health check
+          # --------------------------------------------------
           echo "Checking backend health..."
 
-          curl --fail --retry 10 --retry-delay 3 \
-            http://localhost:8000/health
+          for i in {1..10}; do
 
+              if curl --fail --silent --show-error \
+                  http://localhost:8000/health; then
+
+                  echo
+                  echo "Backend health check passed."
+                  break
+
+              fi
+
+              if [ "$i" -eq 10 ]; then
+                  echo "Backend health check failed."
+
+                  echo "Backend logs:"
+                  docker compose logs backend --tail=100
+
+                  exit 1
+              fi
+
+              echo "Waiting for backend..."
+              sleep 5
+
+          done
+
+          # --------------------------------------------------
+          # Frontend health check
+          # --------------------------------------------------
           echo "Checking frontend..."
 
-          curl --fail --retry 10 --retry-delay 3 \
-            http://localhost:8080
+          if curl --fail --silent --show-error \
+              http://localhost:8080 > /dev/null; then
 
-          echo "================================"
-          echo "Deployment successful!"
-          echo "================================"
+              echo "Frontend health check passed."
+
+          else
+
+              echo "Frontend health check failed."
+
+              echo "Frontend logs:"
+              docker compose logs frontend --tail=100
+
+              exit 1
+
+          fi
+
+          echo
+          echo "========================================"
+          echo "       DEPLOYMENT SUCCESSFUL ✅"
+          echo "========================================"
 
           EOF
 
+      # --------------------------------------------------
+      # 5. Cleanup private key
+      # --------------------------------------------------
       - name: Cleanup SSH key
         if: always()
         run: |
           rm -f ~/.ssh/tikkamasala.pem
+```
