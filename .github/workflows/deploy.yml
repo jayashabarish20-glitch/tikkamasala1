@@ -1,4 +1,3 @@
-
 name: Deploy Tikka Masala
 
 on:
@@ -18,10 +17,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-
-      # ==================================================
-      # 1. Prepare SSH private key
-      # ==================================================
       - name: Prepare SSH key
         env:
           EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
@@ -32,14 +27,9 @@ jobs:
           fi
 
           mkdir -p ~/.ssh
-
           printf '%s\n' "$EC2_SSH_KEY" > ~/.ssh/tikkamasala.pem
-
           chmod 600 ~/.ssh/tikkamasala.pem
 
-      # ==================================================
-      # 2. Validate EC2 host
-      # ==================================================
       - name: Validate EC2 host
         env:
           EC2_HOST: ${{ secrets.EC2_HOST }}
@@ -51,18 +41,12 @@ jobs:
 
           echo "EC2 host is configured"
 
-      # ==================================================
-      # 3. Add EC2 host to known_hosts
-      # ==================================================
       - name: Add EC2 to known hosts
         env:
           EC2_HOST: ${{ secrets.EC2_HOST }}
         run: |
           ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
 
-      # ==================================================
-      # 4. Test SSH connection
-      # ==================================================
       - name: Test SSH connection
         env:
           EC2_HOST: ${{ secrets.EC2_HOST }}
@@ -77,9 +61,6 @@ jobs:
             "ubuntu@$EC2_HOST" \
             "echo 'SSH connection successful'"
 
-      # ==================================================
-      # 5. Deploy application
-      # ==================================================
       - name: Deploy application
         env:
           EC2_HOST: ${{ secrets.EC2_HOST }}
@@ -89,8 +70,7 @@ jobs:
             -o StrictHostKeyChecking=yes \
             -o BatchMode=yes \
             -o ConnectTimeout=15 \
-            "ubuntu@$EC2_HOST" << 'EOF'
-
+            "ubuntu@$EC2_HOST" 'bash -s' <<'REMOTE_SCRIPT'
           set -e
 
           echo "========================================"
@@ -100,18 +80,14 @@ jobs:
           APP_DIR="/home/ubuntu/tikkamasala1"
           REPO_URL="https://github.com/jayashabarish20-glitch/tikkamasala1.git"
 
-          # ==================================================
-          # Check application directory
-          # ==================================================
           echo "Checking application directory..."
 
           if [ ! -d "$APP_DIR/.git" ]; then
-              echo "Application directory does not exist."
-              echo "Cloning repository..."
+            echo "Application directory does not exist."
+            echo "Cloning repository..."
 
-              rm -rf "$APP_DIR"
-
-              git clone "$REPO_URL" "$APP_DIR"
+            rm -rf "$APP_DIR"
+            git clone "$REPO_URL" "$APP_DIR"
           fi
 
           cd "$APP_DIR"
@@ -119,17 +95,11 @@ jobs:
           echo "Current directory:"
           pwd
 
-          # ==================================================
-          # Pull latest code
-          # ==================================================
-          echo "Pulling latest code from GitHub..."
+          echo "Pulling latest code..."
 
           git fetch origin main
           git reset --hard origin/main
 
-          # ==================================================
-          # Verify required files
-          # ==================================================
           echo "Checking required files..."
 
           test -f docker-compose.yml
@@ -138,8 +108,63 @@ jobs:
 
           echo "Required files found."
 
-          # ==================================================
-          # Check .env
-          # ==================================================
-          if [ ! -f .env]()
+          echo "Checking .env..."
 
+          if [ ! -f .env ]; then
+            echo "ERROR: .env file not found"
+            echo "Create /home/ubuntu/tikkamasala1/.env on EC2"
+            exit 1
+          fi
+
+          echo ".env file found."
+
+          echo "Building and starting containers..."
+
+          docker compose up -d --build --remove-orphans
+
+          echo "Container status:"
+          docker compose ps
+
+          echo "Checking backend health..."
+
+          BACKEND_OK=false
+
+          for i in $(seq 1 10); do
+            if curl --fail --silent --show-error http://localhost:8000/health; then
+              echo
+              echo "Backend health check passed."
+              BACKEND_OK=true
+              break
+            fi
+
+            echo "Backend not ready. Attempt $i/10..."
+            sleep 5
+          done
+
+          if [ "$BACKEND_OK" != "true" ]; then
+            echo "ERROR: Backend health check failed."
+            docker compose logs backend --tail=100
+            exit 1
+          fi
+
+          echo "Checking frontend..."
+
+          if curl --fail --silent --show-error http://localhost:8080 > /dev/null; then
+            echo "Frontend health check passed."
+          else
+            echo "ERROR: Frontend health check failed."
+            docker compose logs frontend --tail=100
+            exit 1
+          fi
+
+          echo
+          echo "========================================"
+          echo "      DEPLOYMENT SUCCESSFUL"
+          echo "========================================"
+
+REMOTE_SCRIPT
+
+      - name: Cleanup SSH key
+        if: always()
+        run: |
+          rm -f ~/.ssh/tikkamasala.pem
