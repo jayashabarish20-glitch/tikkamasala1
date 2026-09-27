@@ -159,7 +159,7 @@
             </div>
           </td>
           <td>📱 ${c.mobile}</td>
-          <td>${c.is_verified ? '<span class="badge badge-success">✅ Verified</span>' : '<span class="badge badge-warning">Unverified</span>'}</td>
+          <td>${c.is_verified ? '<span class="badge badge-success">✅ Verified</span>' : '<span class="badge badge-warning">⚠️ Unverified</span>'}</td>
           <td><strong>${c.total_orders || 0}</strong></td>
           <td>${c.total_spent ? formatPrice(c.total_spent) : '—'}</td>
           <td>${c.created_at ? new Date(c.created_at).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}) : '—'}</td>

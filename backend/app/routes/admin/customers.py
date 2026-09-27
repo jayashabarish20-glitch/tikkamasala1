@@ -30,8 +30,9 @@ async def list_customers(request: Request, db: AsyncSession = Depends(get_db)):
             "id": u.id,
             "name": u.name,
             "mobile": u.mobile,
+            "is_verified": u.is_verified,
             "is_active": u.is_active,
-            "registered_at": u.created_at.isoformat() if u.created_at else None,
+            "created_at": u.created_at.isoformat() if u.created_at else None,
             "total_orders": row[0] or 0,
             "total_spent": float(row[1] or 0),
         })

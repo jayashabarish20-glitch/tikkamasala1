@@ -344,7 +344,7 @@
       message += `*Payment Method:* ${paymentMethod}\n`;
       message += `*Status:* ${statusDisplay}\n`;
 
-      const whatsappUrl = `https://wa.me/${o.customer_mobile}?text=${encodeURIComponent(message)}`;
+      const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
       window.open(whatsappUrl, '_blank');
     }
 

@@ -458,10 +458,18 @@
   .location-btn-group .btn { width: 100%; }
 }
 
+@media (max-width: 600px) {
+  .brand-messages { grid-template-columns: 1fr; gap: .75rem; }
+  .brand-message-card { padding: 1rem .75rem; }
+  .brand-message-card p { font-size: .85rem; }
+}
+
 @media (max-width: 480px) {
   /* Hero */
   .hero { padding: 2.5rem 1rem; }
   .hero::after { display: none; }
+  .hero h1 { font-size: clamp(1.6rem, 5vw, 2.4rem); }
+  .hero-subtitle { font-size: .95rem; margin-bottom: 1.5rem; }
 
   /* Cart */
   .cart-item { grid-template-columns: 48px 1fr; }
@@ -470,11 +478,19 @@
   /* Auth */
   .auth-card { padding: 1.5rem 1.25rem; }
   .auth-title { font-size: 1.4rem; }
+  .auth-logo-icon { width: 56px; height: 56px; font-size: 1.8rem; }
 
   /* Order summary */
   .order-summary { padding: 1rem; }
   .order-summary-row { font-size: .9rem; }
   .order-summary-row.total { font-size: 1.05rem; }
+
+  /* Food card */
+  .food-card-img { height: 140px; }
+  .food-card-body { padding: 1rem; }
+  .food-card-name { font-size: 1rem; }
+  .food-card-desc { font-size: .8rem; }
+  .food-card-price { font-size: 1.1rem; }
 }
 
 /* Notification banner (WS) */

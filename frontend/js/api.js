@@ -50,6 +50,17 @@ const api = {
     }
 
     if (!resp.ok) {
+      if (resp.status === 401) {
+        const currentPath = window.location.pathname;
+        const isLoginPage = currentPath.includes('/login.html') || currentPath.includes('/register.html');
+        if (!isLoginPage) {
+          this.clearToken();
+          const role = localStorage.getItem('tm_role');
+          const redirectUrl = role === 'admin' || role === 'superadmin' ? '/admin/login.html' : '/customer/login.html';
+          window.location.href = redirectUrl;
+          return;
+        }
+      }
       const msg = data?.detail || data?.message || `Error ${resp.status}`;
       throw new Error(typeof msg === 'string' ? msg : JSON.stringify(msg));
     }

@@ -48,3 +48,12 @@ node_modules/
 # Binaries
 ngrok.exe
 ngrok
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+
+# Secrets
+.env
+*.pem

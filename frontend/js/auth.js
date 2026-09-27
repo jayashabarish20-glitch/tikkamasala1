@@ -4,19 +4,38 @@
 
 // ── Redirect guards ──────────────────────────────────────────
 function requireCustomerAuth() {
-  if (!api.getToken() || localStorage.getItem('tm_role') !== 'customer') {
-    window.location.href = '/customer/login.html';
+  const token = api.getToken();
+  const role = localStorage.getItem('tm_role');
+  const currentPath = window.location.pathname;
+  if (!token || role !== 'customer') {
+    if (!currentPath.includes('/customer/login.html') && !currentPath.includes('/customer/register.html')) {
+      window.location.href = '/customer/login.html';
+    }
   }
 }
 function requireAdminAuth() {
-  if (!api.getToken() || !['admin', 'superadmin'].includes(localStorage.getItem('tm_role'))) {
-    window.location.href = '/admin/login.html';
+  const token = api.getToken();
+  const role = localStorage.getItem('tm_role');
+  const currentPath = window.location.pathname;
+  if (!token || !['admin', 'superadmin'].includes(role)) {
+    if (!currentPath.includes('/admin/login.html')) {
+      window.location.href = '/admin/login.html';
+    }
   }
 }
 function redirectIfLoggedIn(role = 'customer') {
-  if (api.getToken()) {
-    if (role === 'admin') window.location.href = '/admin/dashboard.html';
-    else window.location.href = '/customer/home.html';
+  const token = api.getToken();
+  const currentPath = window.location.pathname;
+  if (token) {
+    if (role === 'admin') {
+      if (!currentPath.includes('/admin/')) {
+        window.location.href = '/admin/dashboard.html';
+      }
+    } else {
+      if (!currentPath.includes('/customer/')) {
+        window.location.href = '/customer/home.html';
+      }
+    }
   }
 }
 
