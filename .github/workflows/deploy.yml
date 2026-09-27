@@ -1,0 +1,94 @@
+name: Deploy Tikka Masala
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: tikkamasala-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Prepare SSH key
+        env:
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$EC2_SSH_KEY" > ~/.ssh/tikkamasala.pem
+          chmod 600 ~/.ssh/tikkamasala.pem
+
+      - name: Add EC2 to known hosts
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
+
+      - name: Test SSH connection
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USERNAME: ${{ secrets.EC2_USERNAME }}
+        run: |
+          ssh \
+            -i ~/.ssh/tikkamasala.pem \
+            "$EC2_USERNAME@$EC2_HOST" \
+            "echo SSH connection successful"
+
+      - name: Deploy application
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USERNAME: ${{ secrets.EC2_USERNAME }}
+        run: |
+          ssh \
+            -i ~/.ssh/tikkamasala.pem \
+            "$EC2_USERNAME@$EC2_HOST" << 'EOF'
+
+          set -e
+
+          echo "================================"
+          echo "Starting deployment..."
+          echo "================================"
+
+          cd /home/ubuntu/tikkamasala
+
+          echo "Pulling latest code..."
+
+          git fetch origin main
+          git reset --hard origin/main
+
+          echo "Building Docker images..."
+
+          docker compose up -d --build --remove-orphans
+
+          echo "Checking containers..."
+
+          docker compose ps
+
+          echo "Checking backend health..."
+
+          curl --fail --retry 10 --retry-delay 3 \
+            http://localhost:8000/health
+
+          echo "Checking frontend..."
+
+          curl --fail --retry 10 --retry-delay 3 \
+            http://localhost:8080
+
+          echo "================================"
+          echo "Deployment successful!"
+          echo "================================"
+
+          EOF
+
+      - name: Cleanup SSH key
+        if: always()
+        run: |
+          rm -f ~/.ssh/tikkamasala.pem
