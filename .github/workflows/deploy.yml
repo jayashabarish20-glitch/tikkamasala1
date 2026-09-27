@@ -1,4 +1,4 @@
-```yaml
+
 name: Deploy Tikka Masala
 
 on:
@@ -142,4 +142,4 @@ jobs:
           # Check .env
           # ==================================================
           if [ ! -f .env]()
-```
+
