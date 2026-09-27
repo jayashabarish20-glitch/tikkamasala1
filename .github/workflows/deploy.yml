@@ -1,40 +1,116 @@
+```yaml
+name: Deploy Tikka Masala
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: tikkamasala-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # ==================================================
+      # 1. Prepare SSH private key
+      # ==================================================
+      - name: Prepare SSH key
+        env:
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+        run: |
+          if [ -z "$EC2_SSH_KEY" ]; then
+            echo "ERROR: EC2_SSH_KEY secret is missing"
+            exit 1
+          fi
+
+          mkdir -p ~/.ssh
+
+          printf '%s\n' "$EC2_SSH_KEY" > ~/.ssh/tikkamasala.pem
+
+          chmod 600 ~/.ssh/tikkamasala.pem
+
+      # ==================================================
+      # 2. Validate EC2 host
+      # ==================================================
+      - name: Validate EC2 host
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          if [ -z "$EC2_HOST" ]; then
+            echo "ERROR: EC2_HOST secret is missing"
+            exit 1
+          fi
+
+          echo "EC2 host is configured"
+
+      # ==================================================
+      # 3. Add EC2 host to known_hosts
+      # ==================================================
+      - name: Add EC2 to known hosts
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
+
+      # ==================================================
+      # 4. Test SSH connection
+      # ==================================================
       - name: Test SSH connection
         env:
           EC2_HOST: ${{ secrets.EC2_HOST }}
         run: |
-          echo "Testing SSH to EC2..."
+          echo "Testing SSH connection..."
 
           ssh \
             -i ~/.ssh/tikkamasala.pem \
-            -o StrictHostKeyChecking=no \
+            -o StrictHostKeyChecking=yes \
             -o BatchMode=yes \
             -o ConnectTimeout=15 \
             "ubuntu@$EC2_HOST" \
             "echo 'SSH connection successful'"
 
+      # ==================================================
+      # 5. Deploy application
+      # ==================================================
       - name: Deploy application
         env:
           EC2_HOST: ${{ secrets.EC2_HOST }}
         run: |
           ssh \
             -i ~/.ssh/tikkamasala.pem \
-            -o StrictHostKeyChecking=no \
+            -o StrictHostKeyChecking=yes \
             -o BatchMode=yes \
             -o ConnectTimeout=15 \
             "ubuntu@$EC2_HOST" << 'EOF'
 
           set -e
 
+          echo "========================================"
+          echo "       TIKKA MASALA DEPLOYMENT"
+          echo "========================================"
+
           APP_DIR="/home/ubuntu/tikkamasala1"
           REPO_URL="https://github.com/jayashabarish20-glitch/tikkamasala1.git"
 
+          # ==================================================
+          # Check application directory
+          # ==================================================
           echo "Checking application directory..."
 
           if [ ! -d "$APP_DIR/.git" ]; then
-              echo "Application directory not found."
+              echo "Application directory does not exist."
               echo "Cloning repository..."
 
               rm -rf "$APP_DIR"
+
               git clone "$REPO_URL" "$APP_DIR"
           fi
 
@@ -43,69 +119,27 @@
           echo "Current directory:"
           pwd
 
-          echo "Pulling latest code..."
+          # ==================================================
+          # Pull latest code
+          # ==================================================
+          echo "Pulling latest code from GitHub..."
 
           git fetch origin main
           git reset --hard origin/main
 
+          # ==================================================
+          # Verify required files
+          # ==================================================
           echo "Checking required files..."
 
           test -f docker-compose.yml
           test -f backend/Dockerfile
           test -f frontend/Dockerfile
 
-          if [ ! -f .env ]; then
-              echo "ERROR: .env not found"
-              exit 1
-          fi
+          echo "Required files found."
 
-          echo "Building and starting containers..."
-
-          docker compose up -d --build --remove-orphans
-
-          echo "Container status..."
-
-          docker compose ps
-
-          echo "Checking backend health..."
-
-          for i in {1..10}; do
-              if curl --fail --silent --show-error \
-                  http://localhost:8000/health; then
-
-                  echo
-                  echo "Backend health check passed."
-                  break
-
-              fi
-
-              if [ "$i" -eq 10 ]; then
-                  echo "Backend health check failed."
-                  docker compose logs backend --tail=100
-                  exit 1
-              fi
-
-              echo "Waiting for backend..."
-              sleep 5
-          done
-
-          echo "Checking frontend..."
-
-          if curl --fail --silent --show-error \
-              http://localhost:8080 > /dev/null; then
-
-              echo "Frontend health check passed."
-
-          else
-
-              echo "Frontend health check failed."
-              docker compose logs frontend --tail=100
-              exit 1
-
-          fi
-
-          echo "========================================"
-          echo "DEPLOYMENT SUCCESSFUL ✅"
-          echo "========================================"
-
-          EOF
+          # ==================================================
+          # Check .env
+          # ==================================================
+          if [ ! -f .env]()
+```
