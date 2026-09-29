@@ -412,6 +412,11 @@
   gap: 2rem;
   align-items: start;
 }
+.checkout-city-state-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
 .location-btn-group { display: flex; gap: .75rem; flex-wrap: wrap; }
 .map-preview {
   height: 200px;
@@ -491,6 +496,9 @@
   .food-card-name { font-size: 1rem; }
   .food-card-desc { font-size: .8rem; }
   .food-card-price { font-size: 1.1rem; }
+
+  /* Checkout mobile */
+  .checkout-city-state-grid { grid-template-columns: 1fr; }
 }
 
 /* Notification banner (WS) */

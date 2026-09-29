@@ -43,7 +43,7 @@ function renderProducts() {
   let filtered = _products;
   if (_activeCategory) filtered = filtered.filter(p => p.category_id === _activeCategory);
   const availOnly = document.getElementById('avail-only')?.checked;
-  if (availOnly) filtered = filtered.filter(p => p.is_available);
+  if (availOnly) filtered = filtered.filter(p => p.is_available && p.stock_quantity > 0);
   if (_searchQuery) filtered = filtered.filter(p => p.name.toLowerCase().includes(_searchQuery.toLowerCase()));
 
   if (!filtered.length) {
