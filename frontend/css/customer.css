@@ -418,6 +418,17 @@
   gap: 1rem;
 }
 .location-btn-group { display: flex; gap: .75rem; flex-wrap: wrap; }
+
+/* Delivery section responsive flex containers */
+#delivery-section .card-body > div[style*="display:flex"] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+#delivery-section .card-body > div[style*="display:flex"] > .btn {
+  flex: 1;
+  min-width: 140px;
+}
 .map-preview {
   height: 200px;
   border-radius: var(--radius-md);
@@ -463,6 +474,12 @@
   .order-summary { margin-top: 1rem; }
   .location-btn-group { flex-direction: column; }
   .location-btn-group .btn { width: 100%; }
+
+  /* Delivery section */
+  #delivery-section .card-body > div[style*="display:flex"] > .btn {
+    flex: 0 1 calc(50% - .5rem);
+    min-width: unset;
+  }
 }
 
 @media (max-width: 600px) {
@@ -503,6 +520,21 @@
   .checkout-layout { gap: 0; }
   .checkout-city-state-grid { grid-template-columns: 1fr; }
   .card { margin-bottom: 1rem; }
+
+  /* Delivery section on small mobile */
+  #delivery-section .card-body > div[style*="display:flex"] {
+    gap: .75rem;
+  }
+
+  #delivery-section .card-body > div[style*="display:flex"] > .btn {
+    flex: 0 1 calc(50% - .375rem);
+    font-size: .9rem;
+    padding: 10px 12px;
+  }
+
+  #delivery-section .form-group {
+    margin-bottom: 1rem;
+  }
 }
 
 /* Very small screens — additional responsive rules */
@@ -528,6 +560,18 @@
 
   /* Card spacing */
   .card { margin-bottom: .75rem; }
+
+  /* Delivery section on very small screens */
+  #delivery-section .card-body > div[style*="display:flex"] {
+    flex-wrap: wrap;
+    gap: .75rem;
+  }
+
+  #delivery-section .card-body > div[style*="display:flex"] > .btn {
+    flex-basis: calc(50% - .375rem);
+    font-size: .85rem;
+    padding: 10px 12px;
+  }
 }
 
 @media (max-width: 360px) {
@@ -537,6 +581,30 @@
   .form-label { font-size: .8rem; }
   .btn { padding: 9px 14px; font-size: .85rem; }
   .btn-lg { padding: .75rem 1.5rem; font-size: .9rem; }
+
+  /* Delivery section on ultra-small screens */
+  #delivery-section .card-body > div[style*="display:flex"] > .btn {
+    flex-basis: calc(50% - .35rem);
+    font-size: .8rem;
+    padding: 8px 10px;
+  }
+}
+
+/* Ultra-small screens — 320px and below */
+@media (max-width: 320px) {
+  .container { padding: 0 .7rem; }
+  .card-body { padding: .9rem .65rem; }
+
+  /* Delivery section buttons */
+  #delivery-section .card-body > div[style*="display:flex"] {
+    gap: .6rem;
+  }
+
+  #delivery-section .card-body > div[style*="display:flex"] > .btn {
+    flex-basis: calc(50% - .3rem);
+    font-size: .75rem;
+    padding: 7px 8px;
+  }
 }
 
 /* Notification banner (WS) */
