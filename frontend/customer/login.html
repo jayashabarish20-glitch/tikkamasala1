@@ -27,11 +27,89 @@
         <div class="form-group">
           <label class="form-label" for="password">🔒 Password</label>
           <input class="form-control" type="password" id="password" placeholder="Enter your password" required>
+          <div style="text-align: right; margin-top: 0.5rem;">
+            <a href="#forgot-password-section" onclick="showForgotPasswordForm(event)" style="font-size: 0.85rem; color: var(--text-muted);">Forgot Password?</a>
+          </div>
         </div>
         <button class="btn btn-primary btn-block btn-lg" id="login-btn" type="submit">
           Login
         </button>
       </form>
+
+      <!-- Forgot Password Section -->
+      <div id="forgot-password-section" class="hidden">
+        <div style="margin-bottom: 1.5rem;">
+          <button type="button" class="btn btn-ghost btn-sm" onclick="backToLogin()" style="margin-bottom: 1rem;">
+            ← Back to Login
+          </button>
+        </div>
+
+        <!-- Step 1: Enter Phone -->
+        <div id="forgot-phone-step" class="hidden">
+          <h3 style="font-size: 1.3rem; margin-bottom: 1rem;">Reset Password</h3>
+          <form onsubmit="handleForgotPassword(event)">
+            <div class="form-group">
+              <label class="form-label">📱 Registered Mobile Number</label>
+              <input class="form-control" type="tel" id="forgot-mobile" placeholder="Enter 10-digit mobile" maxlength="10" required>
+            </div>
+            <button class="btn btn-primary btn-block" id="forgot-send-otp-btn" type="submit">
+              Request OTP
+            </button>
+          </form>
+        </div>
+
+        <!-- Step 2: Enter OTP -->
+        <div id="forgot-otp-step" class="hidden">
+          <h3 style="font-size: 1.3rem; margin-bottom: 1rem;">Verify OTP</h3>
+          <form onsubmit="handleVerifyResetOTP(event)">
+            <div class="form-group">
+              <label class="form-label">Enter OTP</label>
+              <div style="display: flex; gap: 0.5rem; justify-content: center; margin-bottom: 1rem;">
+                <input class="form-control otp-box" type="text" inputmode="numeric" maxlength="1" style="width: 2.5rem; text-align: center; padding: 0.5rem 0.25rem;">
+                <input class="form-control otp-box" type="text" inputmode="numeric" maxlength="1" style="width: 2.5rem; text-align: center; padding: 0.5rem 0.25rem;">
+                <input class="form-control otp-box" type="text" inputmode="numeric" maxlength="1" style="width: 2.5rem; text-align: center; padding: 0.5rem 0.25rem;">
+                <input class="form-control otp-box" type="text" inputmode="numeric" maxlength="1" style="width: 2.5rem; text-align: center; padding: 0.5rem 0.25rem;">
+                <input class="form-control otp-box" type="text" inputmode="numeric" maxlength="1" style="width: 2.5rem; text-align: center; padding: 0.5rem 0.25rem;">
+                <input class="form-control otp-box" type="text" inputmode="numeric" maxlength="1" style="width: 2.5rem; text-align: center; padding: 0.5rem 0.25rem;">
+              </div>
+            </div>
+            <button class="btn btn-primary btn-block" id="forgot-verify-otp-btn" type="submit">
+              Verify OTP
+            </button>
+            <button type="button" class="btn btn-ghost btn-block btn-sm" style="margin-top: 0.75rem;" onclick="handleForgotPassword()">
+              Resend OTP
+            </button>
+          </form>
+        </div>
+
+        <!-- Step 3: New Password -->
+        <div id="forgot-password-step" class="hidden">
+          <h3 style="font-size: 1.3rem; margin-bottom: 1rem;">New Password</h3>
+          <form onsubmit="handleResetPassword(event)">
+            <div class="form-group">
+              <label class="form-label">New Password</label>
+              <input class="form-control" type="password" id="forgot-new-password" placeholder="Min 6 characters" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Confirm Password</label>
+              <input class="form-control" type="password" id="forgot-confirm-password" placeholder="Re-enter password" required>
+            </div>
+            <button class="btn btn-primary btn-block" id="forgot-reset-btn" type="submit">
+              Reset Password
+            </button>
+          </form>
+        </div>
+
+        <!-- Success State -->
+        <div id="forgot-success-step" class="hidden" style="text-align: center;">
+          <div style="font-size: 2.5rem; margin-bottom: 1rem;">✅</div>
+          <h3 style="font-size: 1.3rem; margin-bottom: 0.5rem;">Password Updated!</h3>
+          <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Your password has been reset successfully. You can now login with your new password.</p>
+          <button class="btn btn-primary btn-block" onclick="backToLogin()">
+            Back to Login
+          </button>
+        </div>
+      </div>
 
       <div class="divider"><span>OR</span></div>
 

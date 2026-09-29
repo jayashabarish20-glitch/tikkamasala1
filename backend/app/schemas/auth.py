@@ -68,3 +68,32 @@ class AdminTokenResponse(BaseModel):
     token_type: str = "bearer"
     role: str
     username: str
+
+
+class ForgotPasswordRequest(BaseModel):
+    mobile: str
+
+    @field_validator("mobile")
+    @classmethod
+    def validate_mobile(cls, v):
+        v = v.strip()
+        if not re.match(r"^[6-9]\d{9}$", v):
+            raise ValueError("Enter a valid 10-digit Indian mobile number.")
+        return v
+
+
+class VerifyResetOTPRequest(BaseModel):
+    mobile: str
+    code: str
+
+
+class ResetPasswordRequest(BaseModel):
+    reset_token: str
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_password(cls, v):
+        if len(v) < 6:
+            raise ValueError("Password must be at least 6 characters.")
+        return v

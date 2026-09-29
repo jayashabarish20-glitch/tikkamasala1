@@ -12,10 +12,14 @@ from app.models.user import User
 from app.models.admin import Admin
 from app.schemas.auth import (
     SendOTPRequest, VerifyOTPRequest, RegisterRequest,
-    LoginRequest, AdminLoginRequest, TokenResponse, AdminTokenResponse, UserResponse
+    LoginRequest, AdminLoginRequest, TokenResponse, AdminTokenResponse, UserResponse,
+    ForgotPasswordRequest, VerifyResetOTPRequest, ResetPasswordRequest
 )
 from app.services.otp_service import create_otp, verify_otp
 from app.services.sms_service import send_otp_sms
+from app.services.password_reset_service import (
+    request_password_reset, verify_reset_otp_and_create_token, reset_password
+)
 from app.utils.security import hash_password, verify_password
 from app.utils.jwt import create_access_token, decode_token
 
@@ -175,3 +179,27 @@ async def get_me(request: Request, db: AsyncSession = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found.")
     return {"id": user.id, "name": user.name, "mobile": user.mobile, "role": "customer"}
+
+
+@router.post("/forgot-password")
+async def forgot_password(req: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
+    """Request OTP for password reset."""
+    otp_code = await request_password_reset(db, req.mobile)
+    response = {"message": "OTP sent for password reset."}
+    if settings.DEMO_MODE:
+        response["demo_otp"] = otp_code
+    return response
+
+
+@router.post("/verify-reset-otp")
+async def verify_reset_otp(req: VerifyResetOTPRequest, db: AsyncSession = Depends(get_db)):
+    """Verify OTP and return reset token."""
+    reset_token = await verify_reset_otp_and_create_token(db, req.mobile, req.code)
+    return {"message": "OTP verified.", "reset_token": reset_token}
+
+
+@router.post("/reset-password")
+async def reset_password_route(req: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
+    """Reset password using reset token."""
+    await reset_password(db, req.reset_token, req.new_password)
+    return {"message": "Password reset successful."}

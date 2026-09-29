@@ -161,6 +161,101 @@ function logout(redirectTo = '/customer/login.html') {
   window.location.href = redirectTo;
 }
 
+// ── Forgot Password Flow ─────────────────────────────────────
+let _resetToken = null;
+let _resetMobile = null;
+
+function showForgotPasswordForm(e) {
+  e.preventDefault();
+  document.getElementById('login-form').classList.add('hidden');
+  document.getElementById('forgot-password-section').classList.remove('hidden');
+  document.getElementById('forgot-phone-step').classList.remove('hidden');
+  document.getElementById('forgot-otp-step').classList.add('hidden');
+  document.getElementById('forgot-password-step').classList.add('hidden');
+  document.getElementById('forgot-success-step').classList.add('hidden');
+  _resetToken = null;
+  _resetMobile = null;
+}
+
+function backToLogin() {
+  document.getElementById('login-form').classList.remove('hidden');
+  document.getElementById('forgot-password-section').classList.add('hidden');
+  document.getElementById('forgot-phone-step').classList.add('hidden');
+  document.getElementById('forgot-otp-step').classList.add('hidden');
+  document.getElementById('forgot-password-step').classList.add('hidden');
+  document.getElementById('forgot-success-step').classList.add('hidden');
+  document.getElementById('forgot-mobile').value = '';
+  document.querySelectorAll('#forgot-password-section .otp-box').forEach(b => b.value = '');
+  document.getElementById('forgot-new-password').value = '';
+  document.getElementById('forgot-confirm-password').value = '';
+  _resetToken = null;
+  _resetMobile = null;
+}
+
+async function handleForgotPassword(e) {
+  e && e.preventDefault();
+  const btn = document.getElementById('forgot-send-otp-btn');
+  const mobile = document.getElementById('forgot-mobile').value.trim();
+  if (!mobile) { showToast('Enter your mobile number.', 'warning'); return; }
+  setLoading(btn, true, 'Requesting OTP...');
+  try {
+    const data = await api.post('/api/auth/forgot-password', { mobile });
+    _resetMobile = mobile;
+    showToast('OTP sent to your mobile!', 'success');
+    if (data.demo_otp) showToast(`Demo OTP: ${data.demo_otp}`, 'info', 10000);
+    document.getElementById('forgot-phone-step').classList.add('hidden');
+    document.getElementById('forgot-otp-step').classList.remove('hidden');
+    initOTPBoxes('#forgot-password-section');
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    setLoading(btn, false, 'Request OTP');
+  }
+}
+
+async function handleVerifyResetOTP(e) {
+  e && e.preventDefault();
+  const btn = document.getElementById('forgot-verify-otp-btn');
+  const boxes = document.querySelectorAll('#forgot-password-section .otp-box');
+  const code = [...boxes].map(b => b.value).join('');
+  if (!code || code.length !== 6) { showToast('Enter 6-digit OTP.', 'warning'); return; }
+  setLoading(btn, true, 'Verifying...');
+  try {
+    const data = await api.post('/api/auth/verify-reset-otp', { mobile: _resetMobile, code });
+    _resetToken = data.reset_token;
+    showToast('OTP verified!', 'success');
+    document.getElementById('forgot-otp-step').classList.add('hidden');
+    document.getElementById('forgot-password-step').classList.remove('hidden');
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    setLoading(btn, false, 'Verify OTP');
+  }
+}
+
+async function handleResetPassword(e) {
+  e && e.preventDefault();
+  if (!_resetToken) { showToast('Complete OTP verification first.', 'warning'); return; }
+  const newPwd = document.getElementById('forgot-new-password').value;
+  const confirmPwd = document.getElementById('forgot-confirm-password').value;
+  if (newPwd !== confirmPwd) { showToast('Passwords do not match.', 'warning'); return; }
+  if (newPwd.length < 6) { showToast('Password must be at least 6 characters.', 'warning'); return; }
+  const btn = document.getElementById('forgot-reset-btn');
+  setLoading(btn, true, 'Resetting password...');
+  try {
+    await api.post('/api/auth/reset-password', { reset_token: _resetToken, new_password: newPwd });
+    showToast('Password reset successful!', 'success');
+    document.getElementById('forgot-password-step').classList.add('hidden');
+    document.getElementById('forgot-success-step').classList.remove('hidden');
+    _resetToken = null;
+    _resetMobile = null;
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    setLoading(btn, false, 'Reset Password');
+  }
+}
+
 // ── OTP box helpers ──────────────────────────────────────────
 function initOTPBoxes(containerSelector) {
   const boxes = document.querySelectorAll(containerSelector + ' .otp-box');

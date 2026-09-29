@@ -75,3 +75,12 @@ async def send_delivery_otp_sms(mobile: str, otp: str) -> bool:
         f"Share this OTP with the delivery person when receiving your order."
     )
     return await provider.send_sms(mobile, message)
+
+
+async def send_password_reset_otp_sms(mobile: str, otp: str) -> bool:
+    provider = get_sms_provider()
+    message = (
+        f"Tikka Masala Chat Corner: Your password reset OTP is {otp}. "
+        f"Valid for 10 minutes. Do not share with anyone."
+    )
+    return await provider.send_sms(mobile, message)

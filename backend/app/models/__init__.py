@@ -12,3 +12,4 @@ from app.models.payment import Payment
 from app.models.otp import OTP
 from app.models.inventory import Inventory
 from app.models.order_status_history import OrderStatusHistory
+from app.models.password_reset_token import PasswordResetToken
