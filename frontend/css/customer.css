@@ -433,7 +433,7 @@
 /* ── Responsive: Customer Pages ── */
 
 @media (max-width: 900px) {
-  .checkout-layout { grid-template-columns: 1fr; }
+  .checkout-layout { grid-template-columns: 1fr; gap: 1.5rem; }
 }
 
 @media (max-width: 768px) {
@@ -459,6 +459,8 @@
   .auth-card { padding: 2rem 1.5rem; border-radius: var(--radius-lg); }
 
   /* Checkout section */
+  .checkout-layout { gap: 1.25rem; }
+  .order-summary { margin-top: 1rem; }
   .location-btn-group { flex-direction: column; }
   .location-btn-group .btn { width: 100%; }
 }
@@ -498,7 +500,43 @@
   .food-card-price { font-size: 1.1rem; }
 
   /* Checkout mobile */
+  .checkout-layout { gap: 0; }
   .checkout-city-state-grid { grid-template-columns: 1fr; }
+  .card { margin-bottom: 1rem; }
+}
+
+/* Very small screens — additional responsive rules */
+@media (max-width: 390px) {
+  .container { padding: 0 1rem; }
+  .card-body { padding: 1.25rem 1rem; }
+
+  /* Checkout button groups */
+  .card-body > div[style*="display:flex"] {
+    flex-wrap: wrap !important;
+    gap: .75rem !important;
+  }
+
+  .card-body > div[style*="display:flex"] > .btn {
+    font-size: .85rem;
+    padding: 10px 16px;
+    flex-basis: calc(50% - .375rem) !important;
+  }
+
+  /* Form elements */
+  .form-label { font-size: .85rem; margin-bottom: .35rem; }
+  .form-control { padding: .7rem .95rem; font-size: .9rem; }
+
+  /* Card spacing */
+  .card { margin-bottom: .75rem; }
+}
+
+@media (max-width: 360px) {
+  .container { padding: 0 .75rem; }
+  .card-body { padding: 1rem .75rem; }
+  .form-control { padding: .65rem .85rem; font-size: .88rem; }
+  .form-label { font-size: .8rem; }
+  .btn { padding: 9px 14px; font-size: .85rem; }
+  .btn-lg { padding: .75rem 1.5rem; font-size: .9rem; }
 }
 
 /* Notification banner (WS) */
