@@ -214,9 +214,21 @@ async def get_my_orders(request: Request, db: AsyncSession = Depends(get_db)):
     for o in orders:
         placed_time = "—"
         if o.created_at:
-            ist = timezone(timedelta(hours=5, minutes=30))
-            ist_time = o.created_at.replace(tzinfo=timezone.utc).astimezone(ist)
-            placed_time = ist_time.strftime("%H:%M:%S")
+            try:
+                # Handle both naive and timezone-aware datetimes
+                if o.created_at.tzinfo is None:
+                    # Naive datetime - assume it's UTC
+                    utc_dt = o.created_at.replace(tzinfo=timezone.utc)
+                else:
+                    # Already timezone-aware - convert to UTC first if needed
+                    utc_dt = o.created_at.astimezone(timezone.utc)
+
+                # Convert UTC to IST
+                ist = timezone(timedelta(hours=5, minutes=30))
+                ist_time = utc_dt.astimezone(ist)
+                placed_time = ist_time.strftime("%H:%M:%S")
+            except:
+                placed_time = "—"
         out.append({
             "id": o.id,
             "order_number": o.order_number,
@@ -265,9 +277,21 @@ async def get_order(order_id: int, request: Request, db: AsyncSession = Depends(
     # Convert created_at to IST and format as HH:MM:SS
     placed_time = "—"
     if order.created_at:
-        ist = timezone(timedelta(hours=5, minutes=30))
-        ist_time = order.created_at.replace(tzinfo=timezone.utc).astimezone(ist)
-        placed_time = ist_time.strftime("%H:%M:%S")
+        try:
+            # Handle both naive and timezone-aware datetimes
+            if order.created_at.tzinfo is None:
+                # Naive datetime - assume it's UTC
+                utc_dt = order.created_at.replace(tzinfo=timezone.utc)
+            else:
+                # Already timezone-aware - convert to UTC first if needed
+                utc_dt = order.created_at.astimezone(timezone.utc)
+
+            # Convert UTC to IST
+            ist = timezone(timedelta(hours=5, minutes=30))
+            ist_time = utc_dt.astimezone(ist)
+            placed_time = ist_time.strftime("%H:%M:%S")
+        except:
+            placed_time = "—"
 
     return {
         "id": order.id,
