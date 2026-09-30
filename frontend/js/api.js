@@ -82,6 +82,26 @@ function showToast(message, type = 'info', duration = 4000) {
     container.id = 'toast-container';
     document.body.appendChild(container);
   }
+
+  const existingToast = Array.from(container.querySelectorAll('.toast')).find(t => {
+    const msg = t.querySelector('.toast-msg')?.textContent.trim();
+    const existingType = Array.from(t.classList).find(cls => cls.startsWith('toast-'));
+    return msg === message.trim() && existingType === `toast-${type}`;
+  });
+
+  if (existingToast) {
+    if (existingToast.timeoutId) clearTimeout(existingToast.timeoutId);
+    if (existingToast.slideoutTimeoutId) clearTimeout(existingToast.slideoutTimeoutId);
+    existingToast.style.animation = 'none';
+    void existingToast.offsetWidth;
+    existingToast.style.animation = '';
+    existingToast.timeoutId = setTimeout(() => {
+      existingToast.style.animation = 'slideOutRight .3s ease forwards';
+      existingToast.slideoutTimeoutId = setTimeout(() => existingToast.remove(), 300);
+    }, duration);
+    return;
+  }
+
   const icons = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
   const toast = document.createElement('div');
   toast.className = `toast toast-${type}`;
@@ -91,9 +111,19 @@ function showToast(message, type = 'info', duration = 4000) {
     <button class="toast-close" onclick="this.parentElement.remove()">×</button>
   `;
   container.appendChild(toast);
-  setTimeout(() => {
+
+  const closeBtn = toast.querySelector('.toast-close');
+  closeBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (toast.timeoutId) clearTimeout(toast.timeoutId);
+    if (toast.slideoutTimeoutId) clearTimeout(toast.slideoutTimeoutId);
+    toast.remove();
+  });
+
+  toast.timeoutId = setTimeout(() => {
     toast.style.animation = 'slideOutRight .3s ease forwards';
-    setTimeout(() => toast.remove(), 300);
+    toast.slideoutTimeoutId = setTimeout(() => toast.remove(), 300);
   }, duration);
 }
 

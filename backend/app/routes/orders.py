@@ -4,8 +4,8 @@ Full 12-step order process with Haversine 3km validation.
 """
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
-from datetime import datetime
+from sqlalchemy import select, delete, func
+from datetime import datetime, date
 from decimal import Decimal
 
 from app.config.database import get_db
@@ -38,8 +38,24 @@ async def get_current_user_id(request: Request) -> int:
     return int(payload["sub"])
 
 
-def generate_order_number() -> str:
-    return "TM" + "".join(random.choices(string.digits, k=6))
+async def generate_order_number(db: AsyncSession) -> str:
+    today = date.today()
+    day = today.strftime("%d")
+    month = today.strftime("%m")
+    year = today.strftime("%Y")
+
+    from sqlalchemy import cast, Date
+    today_start = datetime.combine(today, datetime.min.time())
+    today_end = datetime.combine(today, datetime.max.time())
+
+    result = await db.execute(
+        select(func.count(Order.id)).where(
+            (Order.created_at >= today_start) & (Order.created_at <= today_end)
+        )
+    )
+    count = result.scalar() or 0
+    sequence = str(count).zfill(4)
+    return f"TM{day}{month}{year}{sequence}"
 
 
 @router.post("")
@@ -110,13 +126,7 @@ async def create_order(req: CreateOrderRequest, request: Request, db: AsyncSessi
     total = subtotal + delivery_fee - discount
 
     # Step 6: Create order
-    order_number = generate_order_number()
-    # Ensure uniqueness
-    while True:
-        existing = await db.execute(select(Order).where(Order.order_number == order_number))
-        if not existing.scalars().first():
-            break
-        order_number = generate_order_number()
+    order_number = await generate_order_number(db)
 
     order = Order(
         order_number=order_number,

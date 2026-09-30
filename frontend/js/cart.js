@@ -15,7 +15,14 @@ async function loadCart() {
   }
 }
 
+let _addingToCart = false;
+let _cartOperations = new Set();
+let _showingAddedToastId = null;
+
 async function addToCart(productId, quantity = 1) {
+  const opKey = `add-${productId}`;
+  if (_cartOperations.has(opKey)) return false;
+  _cartOperations.add(opKey);
   try {
     _cart = await api.post('/api/cart/items', { product_id: productId, quantity });
     updateCartUI();
@@ -25,10 +32,15 @@ async function addToCart(productId, quantity = 1) {
   } catch (err) {
     showToast(err.message, 'error');
     return false;
+  } finally {
+    _cartOperations.delete(opKey);
   }
 }
 
 async function updateCartItem(itemId, quantity) {
+  const opKey = `update-${itemId}`;
+  if (_cartOperations.has(opKey)) return false;
+  _cartOperations.add(opKey);
   try {
     _cart = await api.patch(`/api/cart/items/${itemId}`, { quantity });
     updateCartUI();
@@ -37,10 +49,15 @@ async function updateCartItem(itemId, quantity) {
   } catch (err) {
     showToast(err.message, 'error');
     return false;
+  } finally {
+    _cartOperations.delete(opKey);
   }
 }
 
 async function removeCartItem(itemId) {
+  const opKey = `remove-${itemId}`;
+  if (_cartOperations.has(opKey)) return false;
+  _cartOperations.add(opKey);
   try {
     _cart = await api.del(`/api/cart/items/${itemId}`);
     updateCartUI();
@@ -49,6 +66,8 @@ async function removeCartItem(itemId) {
   } catch (err) {
     showToast(err.message, 'error');
     return false;
+  } finally {
+    _cartOperations.delete(opKey);
   }
 }
 
@@ -135,6 +154,11 @@ async function changeQty(itemId, qty) {
     if (confirm('Remove this item from cart?')) await removeCartItem(itemId);
     return;
   }
+  const item = _cart.items.find(i => i.id === itemId);
+  if (item && qty > item.stock_quantity) {
+    showToast(`You're already at the maximum available quantity. Only ${item.stock_quantity} ${item.product_name} ${item.stock_quantity === 1 ? 'is' : 'are'} currently in stock.`, 'info');
+    return;
+  }
   await updateCartItem(itemId, qty);
 }
 
@@ -150,7 +174,20 @@ function showAddedToCartToast() {
     document.body.appendChild(container);
   }
 
+  // Remove existing "Added to cart" toast if present
+  if (_showingAddedToastId) {
+    const existingToast = document.getElementById(_showingAddedToastId);
+    if (existingToast && existingToast.parentElement) {
+      if (existingToast.timeoutId) clearTimeout(existingToast.timeoutId);
+      if (existingToast.slideoutTimeoutId) clearTimeout(existingToast.slideoutTimeoutId);
+      existingToast.remove();
+    }
+    _showingAddedToastId = null;
+  }
+
+  const toastId = 'added-to-cart-toast-' + Date.now();
   const toast = document.createElement('div');
+  toast.id = toastId;
   toast.className = 'toast toast-success toast-cart';
   toast.innerHTML = `
     <span class="toast-icon">✅</span>
@@ -167,7 +204,10 @@ function showAddedToCartToast() {
   closeBtn.addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();
+    if (toast.timeoutId) clearTimeout(toast.timeoutId);
+    if (toast.slideoutTimeoutId) clearTimeout(toast.slideoutTimeoutId);
     toast.remove();
+    _showingAddedToastId = null;
   });
 
   viewBtn.addEventListener('click', (e) => {
@@ -176,10 +216,14 @@ function showAddedToCartToast() {
     window.location.href = '/customer/cart.html';
   });
 
+  _showingAddedToastId = toastId;
   container.appendChild(toast);
-  setTimeout(() => {
+  toast.timeoutId = setTimeout(() => {
     if (!toast.isConnected) return;
     toast.style.animation = 'slideOutRight .3s ease forwards';
-    setTimeout(() => toast.remove(), 300);
+    toast.slideoutTimeoutId = setTimeout(() => {
+      toast.remove();
+      _showingAddedToastId = null;
+    }, 300);
   }, 6000);
 }

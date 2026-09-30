@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Toast Deduplication Test</title>
+  <link rel="stylesheet" href="css/main.css">
+  <style>
+    body { padding: 2rem; background: #f5f5f5; }
+    .test-section { background: white; padding: 1.5rem; margin-bottom: 1.5rem; border-radius: 8px; }
+    button { margin: 0.5rem; padding: 0.75rem 1.5rem; }
+    .test-result { margin-top: 1rem; padding: 1rem; background: #f0f0f0; border-radius: 4px; font-family: monospace; }
+  </style>
+</head>
+<body>
+  <h1>Toast Deduplication Test</h1>
+
+  <div class="test-section">
+    <h2>Test 1: Same Toast Multiple Times</h2>
+    <p>Click to trigger the same "Added to cart!" message 5 times rapidly</p>
+    <button onclick="testDuplicateAddedToCart()">Test Added to Cart x5</button>
+    <div class="test-result" id="result1">Expected: Only 1 toast visible (should not stack)</div>
+  </div>
+
+  <div class="test-section">
+    <h2>Test 2: Same Error Multiple Times</h2>
+    <p>Click to trigger the same error message 3 times rapidly</p>
+    <button onclick="testDuplicateError()">Test Duplicate Error x3</button>
+    <div class="test-result" id="result2">Expected: Only 1 error toast visible</div>
+  </div>
+
+  <div class="test-section">
+    <h2>Test 3: Different Messages</h2>
+    <p>Click to trigger different messages - they should all appear</p>
+    <button onclick="testDifferentMessages()">Test Different Messages</button>
+    <div class="test-result" id="result3">Expected: 3 different toasts visible</div>
+  </div>
+
+  <div class="test-section">
+    <h2>Test 4: Same Message After First Dismisses</h2>
+    <p>Trigger a message, let it auto-dismiss, then trigger it again</p>
+    <button onclick="testMessageAfterDismiss()">Test Message After Auto-Dismiss</button>
+    <div class="test-result" id="result4">Expected: New toast appears after first one dismissed</div>
+  </div>
+
+  <div class="test-section">
+    <h2>DOM Inspector</h2>
+    <button onclick="inspectToasts()">Show Toast Count</button>
+    <div class="test-result" id="inspector">Toast count will appear here</div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script>
+    async function testDuplicateAddedToCart() {
+      const result = document.getElementById('result1');
+      result.textContent = 'Triggering 5 identical "Added to cart!" toasts...';
+
+      for (let i = 0; i < 5; i++) {
+        showAddedToCartToast();
+        await new Promise(r => setTimeout(r, 100));
+      }
+
+      const count = document.querySelectorAll('#toast-container .toast').length;
+      result.innerHTML = `<strong>RESULT:</strong> ${count} toast(s) visible<br>` +
+        (count === 1 ? '✅ PASS - Deduplication working!' : '❌ FAIL - Expected 1 toast');
+    }
+
+    async function testDuplicateError() {
+      const result = document.getElementById('result2');
+      result.textContent = 'Triggering 3 identical error toasts...';
+
+      for (let i = 0; i < 3; i++) {
+        showToast('French Fries does not have enough stock for that quantity.', 'error');
+        await new Promise(r => setTimeout(r, 100));
+      }
+
+      const count = document.querySelectorAll('#toast-container .toast').length;
+      result.innerHTML = `<strong>RESULT:</strong> ${count} toast(s) visible<br>` +
+        (count === 1 ? '✅ PASS - Deduplication working!' : '❌ FAIL - Expected 1 toast');
+    }
+
+    async function testDifferentMessages() {
+      const result = document.getElementById('result3');
+      result.textContent = 'Triggering 3 different toasts...';
+
+      showToast('Added to cart!', 'success');
+      await new Promise(r => setTimeout(r, 100));
+      showToast('Please login to add items to cart.', 'warning');
+      await new Promise(r => setTimeout(r, 100));
+      showToast('French Fries does not have enough stock for that quantity.', 'error');
+
+      const count = document.querySelectorAll('#toast-container .toast').length;
+      result.innerHTML = `<strong>RESULT:</strong> ${count} toast(s) visible<br>` +
+        (count === 3 ? '✅ PASS - Different messages not deduplicated!' : '❌ FAIL - Expected 3 toasts');
+    }
+
+    async function testMessageAfterDismiss() {
+      const result = document.getElementById('result4');
+      result.textContent = 'Triggering message with 2s duration, will trigger again in 3s...';
+
+      showToast('Test message', 'info', 2000);
+      await new Promise(r => setTimeout(r, 3000));
+      showToast('Test message', 'info', 2000);
+
+      const count = document.querySelectorAll('#toast-container .toast').length;
+      result.innerHTML = `<strong>RESULT:</strong> ${count} toast(s) visible<br>` +
+        'First toast should be gone, second should be visible now<br>' +
+        (count === 1 ? '✅ PASS - New toast created after old dismissed!' : '⚠️ Check manually');
+    }
+
+    function inspectToasts() {
+      const inspector = document.getElementById('inspector');
+      const toasts = document.querySelectorAll('#toast-container .toast');
+      const count = toasts.length;
+
+      let html = `<strong>Toast Count: ${count}</strong><br>`;
+      toasts.forEach((toast, i) => {
+        const msg = toast.querySelector('.toast-msg')?.textContent.trim() || '(no message)';
+        const type = Array.from(toast.classList).find(c => c.startsWith('toast-')) || '(no type)';
+        html += `<br>Toast ${i + 1}: [${type}] "${msg}"`;
+      });
+
+      inspector.innerHTML = html;
+    }
+  </script>
+</body>
+</html>

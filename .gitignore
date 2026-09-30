@@ -57,3 +57,8 @@ crash.log
 # Secrets
 .env
 *.pem
+venv/
+venv_new/
+__pycache__/
+*.pyc
+.env
