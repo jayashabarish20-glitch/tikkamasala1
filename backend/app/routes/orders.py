@@ -4,8 +4,8 @@ Full 12-step order process with Haversine 3km validation.
 """
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
-from datetime import datetime
+from sqlalchemy import select, delete, func
+from datetime import datetime, date, timezone, timedelta
 from decimal import Decimal
 
 from app.config.database import get_db
@@ -18,10 +18,13 @@ from app.models.order_status_history import OrderStatusHistory
 from app.models.payment import Payment
 from app.models.product import Product
 from app.models.inventory import Inventory
+from app.models.user import User
 from app.schemas.order import CreateOrderRequest
 from app.utils.jwt import decode_token
 from app.utils.location import haversine_distance
+from app.utils.otp import generate_otp
 from app.services.websocket_manager import ws_manager
+from app.services.sms_service import send_delivery_otp_sms
 import random
 import string
 
@@ -38,14 +41,33 @@ async def get_current_user_id(request: Request) -> int:
     return int(payload["sub"])
 
 
-def generate_order_number() -> str:
-    return "TM" + "".join(random.choices(string.digits, k=6))
+async def generate_order_number(db: AsyncSession) -> str:
+    today = date.today()
+    year = today.strftime("%Y")
+    month = today.strftime("%m")
+    day = today.strftime("%d")
+
+    from sqlalchemy import cast, Date
+    today_start = datetime.combine(today, datetime.min.time())
+    today_end = datetime.combine(today, datetime.max.time())
+
+    result = await db.execute(
+        select(func.count(Order.id)).where(
+            (Order.created_at >= today_start) & (Order.created_at <= today_end)
+        )
+    )
+    count = result.scalar() or 0
+    sequence = str(count).zfill(4)
+    return f"TM{year}{month}{day}{sequence}"
 
 
 @router.post("")
 async def create_order(req: CreateOrderRequest, request: Request, db: AsyncSession = Depends(get_db)):
-    """Full order creation with all validations."""
+    """Full order creation with all validations. For OFFLINE/COD only. ONLINE orders created after payment."""
     user_id = await get_current_user_id(request)
+
+    if req.payment_method == "ONLINE":
+        raise HTTPException(status_code=400, detail="For ONLINE payments, use /api/payments/create-order endpoint.")
 
     # Step 1: Get cart
     cart_result = await db.execute(select(Cart).where(Cart.user_id == user_id))
@@ -110,13 +132,7 @@ async def create_order(req: CreateOrderRequest, request: Request, db: AsyncSessi
     total = subtotal + delivery_fee - discount
 
     # Step 6: Create order
-    order_number = generate_order_number()
-    # Ensure uniqueness
-    while True:
-        existing = await db.execute(select(Order).where(Order.order_number == order_number))
-        if not existing.scalars().first():
-            break
-        order_number = generate_order_number()
+    order_number = await generate_order_number(db)
 
     order = Order(
         order_number=order_number,
@@ -137,11 +153,12 @@ async def create_order(req: CreateOrderRequest, request: Request, db: AsyncSessi
         total=total,
         status="PENDING",
         payment_method=req.payment_method,
-        payment_status="PENDING" if req.payment_method == "COD" else "PENDING",
+        payment_status="PENDING",
+        payment_mode="OFFLINE",
         notes=req.notes,
     )
     db.add(order)
-    await db.flush()  # get order.id
+    await db.flush()
 
     # Step 7: Create order items
     for oi in order_items_data:
@@ -160,6 +177,18 @@ async def create_order(req: CreateOrderRequest, request: Request, db: AsyncSessi
     for product in locked_products:
         await ws_manager.broadcast_inventory({"type": "stock_update", "product_id": product.id, "stock_quantity": product.stock_quantity, "is_available": product.is_available})
     await db.refresh(order)
+
+    # Step 8.5: Generate and send demo OTP for COD
+    otp = generate_otp(6)
+    order.delivery_otp = otp
+    order.otp_expires_at = datetime.utcnow() + timedelta(hours=12)
+    db.add(order)
+    await db.commit()
+
+    user_result = await db.execute(select(User).where(User.id == user_id))
+    user = user_result.scalars().first()
+    if user:
+        await send_delivery_otp_sms(user.mobile, otp)
 
     # Step 9: Clear cart
     await db.execute(delete(CartItem).where(CartItem.cart_id == cart.id))
@@ -196,17 +225,35 @@ async def get_my_orders(request: Request, db: AsyncSession = Depends(get_db)):
     user_id = await get_current_user_id(request)
     result = await db.execute(select(Order).where(Order.user_id == user_id).order_by(Order.created_at.desc()))
     orders = result.scalars().all()
-    return [
-        {
+    out = []
+    for o in orders:
+        placed_time = "—"
+        if o.created_at:
+            try:
+                # Handle both naive and timezone-aware datetimes
+                if o.created_at.tzinfo is None:
+                    # Naive datetime - assume it's UTC
+                    utc_dt = o.created_at.replace(tzinfo=timezone.utc)
+                else:
+                    # Already timezone-aware - convert to UTC first if needed
+                    utc_dt = o.created_at.astimezone(timezone.utc)
+
+                # Convert UTC to IST
+                ist = timezone(timedelta(hours=5, minutes=30))
+                ist_time = utc_dt.astimezone(ist)
+                placed_time = ist_time.strftime("%H:%M:%S")
+            except:
+                placed_time = "—"
+        out.append({
             "id": o.id,
             "order_number": o.order_number,
             "order_type": o.order_type,
             "total": float(o.total),
             "status": o.status,
             "created_at": o.created_at.isoformat() if o.created_at else None,
-        }
-        for o in orders
-    ]
+            "placed_time": placed_time,
+        })
+    return out
 
 
 @router.get("/{order_id}")
@@ -242,6 +289,25 @@ async def get_order(order_id: int, request: Request, db: AsyncSession = Depends(
     pay_result = await db.execute(select(Payment).where(Payment.order_id == order.id))
     payment = pay_result.scalars().first()
 
+    # Convert created_at to IST and format as HH:MM:SS
+    placed_time = "—"
+    if order.created_at:
+        try:
+            # Handle both naive and timezone-aware datetimes
+            if order.created_at.tzinfo is None:
+                # Naive datetime - assume it's UTC
+                utc_dt = order.created_at.replace(tzinfo=timezone.utc)
+            else:
+                # Already timezone-aware - convert to UTC first if needed
+                utc_dt = order.created_at.astimezone(timezone.utc)
+
+            # Convert UTC to IST
+            ist = timezone(timedelta(hours=5, minutes=30))
+            ist_time = utc_dt.astimezone(ist)
+            placed_time = ist_time.strftime("%H:%M:%S")
+        except:
+            placed_time = "—"
+
     return {
         "id": order.id,
         "order_number": order.order_number,
@@ -254,7 +320,10 @@ async def get_order(order_id: int, request: Request, db: AsyncSession = Depends(
         "status": order.status,
         "items": items_data,
         "history": history,
+        "payment_method": order.payment_method,
         "payment_status": payment.status if payment else "PENDING",
         "razorpay_order_id": payment.razorpay_order_id if payment else None,
+        "delivery_otp": order.delivery_otp,
         "created_at": order.created_at.isoformat() if order.created_at else None,
+        "placed_time": placed_time,
     }

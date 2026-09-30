@@ -83,6 +83,9 @@
               <option value="DELIVERY">Delivery</option>
               <option value="PICKUP">Pickup</option>
             </select>
+            <select id="date-filter" class="form-control" style="width:160px" onchange="filterOrders()">
+              <option value="">All Dates</option>
+            </select>
             <input type="text" id="search-order" class="form-control" style="width:220px" placeholder="🔍 Search order # or name..." oninput="filterOrders()">
             <button class="btn btn-ghost btn-sm" onclick="clearFilters()">Clear</button>
           </div>
@@ -176,10 +179,27 @@
       try {
         allOrders = await api.get('/api/admin/orders');
         document.getElementById('orders-count').textContent = `${allOrders.length} total orders`;
+        populateDateFilter();
         renderOrders(allOrders);
       } catch (err) {
         container.innerHTML = `<tr><td colspan="9"><div class="alert alert-error">${err.message}</div></td></tr>`;
       }
+    }
+
+    function populateDateFilter() {
+      const dateFilter = document.getElementById('date-filter');
+      const dates = new Set();
+      allOrders.forEach(o => {
+        const date = new Date(o.created_at).toLocaleDateString('en-IN');
+        dates.add(date);
+      });
+      const sortedDates = Array.from(dates).sort((a, b) => new Date(a.split('/').reverse().join('-')) - new Date(b.split('/').reverse().join('-')));
+      sortedDates.forEach(date => {
+        const option = document.createElement('option');
+        option.value = date;
+        option.textContent = date;
+        dateFilter.appendChild(option);
+      });
     }
 
     function renderOrders(orders) {
@@ -197,11 +217,11 @@
           <td><span class="badge badge-${o.payment_status === 'PAID' ? 'success' : 'warning'}">${o.payment_status||'—'}</span></td>
           <td><span class="badge badge-secondary">${o.order_type}</span></td>
           <td><span class="badge status-${o.status}">${o.status.replace(/_/g,' ')}</span></td>
-          <td>${timeAgo(o.created_at)}</td>
+          <td>${o.placed_time || '—'}</td>
           <td>
             <div class="actions">
               <button class="btn btn-ghost btn-sm" onclick="viewOrderDetail(${o.id})" title="View Details">🔍</button>
-              ${getStatusButtons(o.id, o.status)}
+              ${getStatusButtons(o.id, o.backend_status || o.status)}
             </div>
           </td>
         </tr>
@@ -211,10 +231,15 @@
     function filterOrders() {
       const status = document.getElementById('status-filter').value;
       const type = document.getElementById('type-filter').value;
+      const selectedDate = document.getElementById('date-filter').value;
       const search = document.getElementById('search-order').value.toLowerCase();
       const filtered = allOrders.filter(o => {
         if (status && o.status !== status) return false;
         if (type && o.order_type !== type) return false;
+        if (selectedDate) {
+          const orderDate = new Date(o.created_at).toLocaleDateString('en-IN');
+          if (orderDate !== selectedDate) return false;
+        }
         if (search && !o.order_number.toLowerCase().includes(search) && !o.customer_name.toLowerCase().includes(search)) return false;
         return true;
       });
@@ -224,6 +249,7 @@
     function clearFilters() {
       document.getElementById('status-filter').value = '';
       document.getElementById('type-filter').value = '';
+      document.getElementById('date-filter').value = '';
       document.getElementById('search-order').value = '';
       renderOrders(allOrders);
     }

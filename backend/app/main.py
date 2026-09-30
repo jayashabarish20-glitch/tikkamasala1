@@ -66,7 +66,7 @@ async def startup():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     await migrate_schema()
-    print("✅ Database tables created/verified.")
+    print("[OK] Database tables created/verified.")
 
     # Seed initial data
     async with AsyncSessionLocal() as db:

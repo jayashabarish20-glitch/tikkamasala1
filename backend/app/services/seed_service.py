@@ -213,4 +213,4 @@ async def seed_database(db: AsyncSession):
                 db.add(Inventory(product_id=prod.id, current_stock=prod.stock_quantity))
 
     await db.commit()
-    print("✅ Database seeding complete.")
+    print("[OK] Database seeding complete.")

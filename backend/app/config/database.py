@@ -69,3 +69,5 @@ async def migrate_schema():
             await conn.execute(text("ALTER TABLE orders ADD COLUMN payment_method VARCHAR(20) DEFAULT 'ONLINE'"))
         if "payment_status" not in order_columns:
             await conn.execute(text("ALTER TABLE orders ADD COLUMN payment_status VARCHAR(20) DEFAULT 'PENDING'"))
+        if "payment_mode" not in order_columns:
+            await conn.execute(text("ALTER TABLE orders ADD COLUMN payment_mode VARCHAR(20) DEFAULT 'OFFLINE'"))

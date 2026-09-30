@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import List, Optional
+from datetime import timezone, timedelta, datetime
 
 from app.config.database import get_db
 from app.models.order import Order
@@ -17,11 +18,13 @@ from app.routes.admin.deps import require_admin
 from app.services.websocket_manager import ws_manager
 from app.config.settings import settings
 from app.utils.location import haversine_distance
+from app.schemas.order import VerifyDeliveryOtpRequest
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/admin", tags=["Admin"])
 
 VALID_TRANSITIONS = {
+    "PENDING": ["PAYMENT_VERIFIED", "CANCELLED", "DELIVERED", "PICKED_UP"],
     "PAYMENT_VERIFIED": ["PREPARING", "CANCELLED"],
     "PREPARING": ["READY", "READY_FOR_PICKUP"],
     "READY": ["OUT_FOR_DELIVERY"],
@@ -63,6 +66,34 @@ async def list_orders(request: Request, db: AsyncSession = Depends(get_db)):
         if o.delivery_lat is not None and o.delivery_lng is not None:
             google_maps_link = f"https://www.google.com/maps?q={float(o.delivery_lat)},{float(o.delivery_lng)}"
 
+        # Map backend status to simple PENDING/COMPLETED for admin display
+        display_status = "COMPLETED" if o.status in ("DELIVERED", "PICKED_UP") else "PENDING"
+
+        # Payment method: ensure it's always COD or ONLINE (never payment_status)
+        if o.payment_method in ("COD", "ONLINE"):
+            payment_display = o.payment_method
+        else:
+            payment_display = "COD"  # Safe default for any unexpected values
+
+        # Convert created_at to IST and format as HH:MM:SS
+        placed_time = "—"
+        if o.created_at:
+            try:
+                # Handle both naive and timezone-aware datetimes
+                if o.created_at.tzinfo is None:
+                    # Naive datetime - assume it's UTC
+                    utc_dt = o.created_at.replace(tzinfo=timezone.utc)
+                else:
+                    # Already timezone-aware - convert to UTC first if needed
+                    utc_dt = o.created_at.astimezone(timezone.utc)
+
+                # Convert UTC to IST
+                ist = timezone(timedelta(hours=5, minutes=30))
+                ist_time = utc_dt.astimezone(ist)
+                placed_time = ist_time.strftime("%H:%M:%S")
+            except:
+                placed_time = "—"
+
         out.append({
             "id": o.id,
             "order_number": o.order_number,
@@ -76,10 +107,14 @@ async def list_orders(request: Request, db: AsyncSession = Depends(get_db)):
             "subtotal": float(o.subtotal),
             "delivery_fee": float(o.delivery_fee),
             "total": float(o.total),
-            "status": o.status,
+            "status": display_status,
+            "backend_status": o.status,
+            "payment": payment_display,
             "payment_method": o.payment_method,
+            "payment_mode": o.payment_mode or "OFFLINE",
             "payment_status": o.payment_status or (payment.status if payment else "PENDING"),
             "items": items_data,
+            "placed_time": placed_time,
             "created_at": o.created_at.isoformat() if o.created_at else None,
         })
     return out
@@ -129,6 +164,34 @@ async def get_order(order_id: int, request: Request, db: AsyncSession = Depends(
     if order.delivery_lat is not None and order.delivery_lng is not None:
         google_maps_link = f"https://www.google.com/maps?q={float(order.delivery_lat)},{float(order.delivery_lng)}"
 
+    # Map backend status to simple PENDING/COMPLETED for admin display
+    display_status = "COMPLETED" if order.status in ("DELIVERED", "PICKED_UP") else "PENDING"
+
+    # Payment method: ensure it's always COD or ONLINE (never payment_status)
+    if order.payment_method in ("COD", "ONLINE"):
+        payment_display = order.payment_method
+    else:
+        payment_display = "COD"  # Safe default for any unexpected values
+
+    # Convert created_at to IST and format as HH:MM:SS
+    placed_time = "—"
+    if order.created_at:
+        try:
+            # Handle both naive and timezone-aware datetimes
+            if order.created_at.tzinfo is None:
+                # Naive datetime - assume it's UTC
+                utc_dt = order.created_at.replace(tzinfo=timezone.utc)
+            else:
+                # Already timezone-aware - convert to UTC first if needed
+                utc_dt = order.created_at.astimezone(timezone.utc)
+
+            # Convert UTC to IST
+            ist = timezone(timedelta(hours=5, minutes=30))
+            ist_time = utc_dt.astimezone(ist)
+            placed_time = ist_time.strftime("%H:%M:%S")
+        except:
+            placed_time = "—"
+
     return {
         "id": order.id,
         "order_number": order.order_number,
@@ -151,12 +214,16 @@ async def get_order(order_id: int, request: Request, db: AsyncSession = Depends(
         "delivery_fee": float(order.delivery_fee),
         "discount": float(order.discount),
         "total": float(order.total),
-        "status": order.status,
+        "status": display_status,
+        "backend_status": order.status,
+        "payment": payment_display,
         "payment_method": order.payment_method,
+        "payment_mode": order.payment_mode or "OFFLINE",
         "payment_status": order.payment_status or (payment.status if payment else "PENDING"),
         "items": items_data,
         "history": history,
         "notes": order.notes,
+        "placed_time": placed_time,
         "created_at": order.created_at.isoformat() if order.created_at else None,
         "delivery_otp": order.delivery_otp,  # Admin sees OTP for delivery verification
     }
@@ -211,3 +278,53 @@ async def update_order_status(order_id: int, req: UpdateStatusRequest, request: 
     })
 
     return {"message": f"Order status updated to {req.status}.", "order_id": order.id, "status": req.status}
+
+
+@router.post("/orders/{order_id}/verify-otp")
+async def verify_delivery_otp(order_id: int, req: VerifyDeliveryOtpRequest, request: Request, db: AsyncSession = Depends(get_db)):
+    await require_admin(request)
+    result = await db.execute(select(Order).where(Order.id == order_id))
+    order = result.scalars().first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found.")
+
+    if order.status in ("DELIVERED", "PICKED_UP", "CANCELLED"):
+        raise HTTPException(status_code=400, detail=f"Cannot verify OTP for order with status {order.status}.")
+
+    if not order.delivery_otp:
+        raise HTTPException(status_code=400, detail="No OTP associated with this order.")
+
+    if order.otp_expires_at and datetime.utcnow() > order.otp_expires_at:
+        raise HTTPException(status_code=400, detail="OTP has expired.")
+
+    if order.delivery_otp != req.otp:
+        order.otp_attempts = (order.otp_attempts or 0) + 1
+        db.add(order)
+        await db.commit()
+        raise HTTPException(status_code=400, detail="Invalid OTP.")
+
+    new_status = "DELIVERED" if order.order_type == "DELIVERY" else "PICKED_UP"
+    order.status = new_status
+    order.otp_attempts = 0
+    db.add(OrderStatusHistory(order_id=order.id, status=new_status, changed_by="admin"))
+    await db.commit()
+
+    await ws_manager.send_to_customer(order.user_id, {
+        "event": "ORDER_STATUS_CHANGED",
+        "order_id": order.id,
+        "order_number": order.order_number,
+        "status": new_status,
+        "message": "Order delivery confirmed! Thank you for your purchase.",
+    })
+    await ws_manager.broadcast_to_admins({
+        "event": "ORDER_UPDATED",
+        "order_id": order.id,
+        "order_number": order.order_number,
+        "status": new_status,
+    })
+
+    return {
+        "message": f"OTP verified. Order status updated to {new_status}.",
+        "order_id": order.id,
+        "status": new_status,
+    }

@@ -82,6 +82,26 @@ function showToast(message, type = 'info', duration = 4000) {
     container.id = 'toast-container';
     document.body.appendChild(container);
   }
+
+  const existingToast = Array.from(container.querySelectorAll('.toast')).find(t => {
+    const msg = t.querySelector('.toast-msg')?.textContent.trim();
+    const existingType = Array.from(t.classList).find(cls => cls.startsWith('toast-'));
+    return msg === message.trim() && existingType === `toast-${type}`;
+  });
+
+  if (existingToast) {
+    if (existingToast.timeoutId) clearTimeout(existingToast.timeoutId);
+    if (existingToast.slideoutTimeoutId) clearTimeout(existingToast.slideoutTimeoutId);
+    existingToast.style.animation = 'none';
+    void existingToast.offsetWidth;
+    existingToast.style.animation = '';
+    existingToast.timeoutId = setTimeout(() => {
+      existingToast.style.animation = 'slideOutRight .3s ease forwards';
+      existingToast.slideoutTimeoutId = setTimeout(() => existingToast.remove(), 300);
+    }, duration);
+    return;
+  }
+
   const icons = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
   const toast = document.createElement('div');
   toast.className = `toast toast-${type}`;
@@ -91,9 +111,19 @@ function showToast(message, type = 'info', duration = 4000) {
     <button class="toast-close" onclick="this.parentElement.remove()">×</button>
   `;
   container.appendChild(toast);
-  setTimeout(() => {
+
+  const closeBtn = toast.querySelector('.toast-close');
+  closeBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (toast.timeoutId) clearTimeout(toast.timeoutId);
+    if (toast.slideoutTimeoutId) clearTimeout(toast.slideoutTimeoutId);
+    toast.remove();
+  });
+
+  toast.timeoutId = setTimeout(() => {
     toast.style.animation = 'slideOutRight .3s ease forwards';
-    setTimeout(() => toast.remove(), 300);
+    toast.slideoutTimeoutId = setTimeout(() => toast.remove(), 300);
   }, duration);
 }
 
@@ -113,12 +143,11 @@ function setLoading(btn, loading, text = 'Loading...') {
 function formatPrice(n) { return '₹' + Number(n).toFixed(2).replace(/\.00$/, ''); }
 function formatDate(d)  { return d ? new Date(d).toLocaleString('en-IN') : '—'; }
 function timeAgo(d) {
-  const diff = Date.now() - new Date(d).getTime();
-  const m = Math.floor(diff / 60000);
-  if (m < 1) return 'just now';
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
+  if (!d) return '—';
+  const date = new Date(d);
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const seconds = String(date.getSeconds()).padStart(2, '0');
+  return `${hours}:${minutes}:${seconds}`;
 }
 

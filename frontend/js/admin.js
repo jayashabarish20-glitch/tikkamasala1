@@ -40,13 +40,13 @@ async function loadAdminOrders() {
         <td>${o.customer_name}<br><small class="text-muted">${o.customer_mobile}</small></td>
         <td>${o.items.map(i => `${i.product_name} ×${i.quantity}`).join('<br>')}</td>
         <td><strong>${formatPrice(o.total)}</strong></td>
-        <td><span class="badge badge-${o.payment_status === 'PAID' ? 'success' : 'warning'}">${o.payment_status}</span></td>
+        <td><span class="badge badge-${o.payment === 'ONLINE' ? 'info' : 'warning'}">${o.payment}</span></td>
         <td><span class="badge badge-secondary">${o.order_type}</span></td>
-        <td><span class="badge status-${o.status}">${o.status.replace(/_/g,' ')}</span></td>
-        <td>${timeAgo(o.created_at)}</td>
+        <td><span class="badge status-${o.status === 'COMPLETED' ? 'success' : 'warning'}">${o.status}</span></td>
+        <td>${o.placed_time || '—'}</td>
         <td>
           <div class="actions">
-            ${getStatusButtons(o.id, o.status)}
+            ${getStatusButtons(o.id, o.backend_status || o.status)}
           </div>
         </td>
       </tr>
@@ -58,6 +58,7 @@ async function loadAdminOrders() {
 
 function getStatusButtons(orderId, status) {
   const next = {
+    'PENDING':          [['verify-otp','Verify OTP 🔑','btn-success']],
     'PAYMENT_VERIFIED': [['PREPARING','Start Preparing','btn-secondary'],['CANCELLED','Cancel','btn-ghost']],
     'PREPARING':        [['READY','Mark Ready','btn-accent']],
     'READY':            [['OUT_FOR_DELIVERY','Out for Delivery','btn-primary']],
@@ -103,7 +104,7 @@ async function verifyDeliveryOTP() {
   const btn = document.getElementById('verify-otp-btn');
   setLoading(btn, true, 'Verifying...');
   try {
-    await api.post('/api/delivery-otp/verify', { order_id: orderId, otp });
+    await api.post(`/api/admin/orders/${orderId}/verify-otp`, { otp });
     showToast('Order marked as DELIVERED! 🎉', 'success');
     closeOTPModal();
     loadAdminOrders();

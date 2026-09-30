@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stock Limit Test</title>
+  <link rel="stylesheet" href="css/main.css">
+  <style>
+    body { padding: 2rem; background: #f5f5f5; }
+    .test-section { background: white; padding: 1.5rem; margin-bottom: 1.5rem; border-radius: 8px; }
+    button { margin: 0.5rem; padding: 0.75rem 1.5rem; }
+    .test-result { margin-top: 1rem; padding: 1rem; background: #f0f0f0; border-radius: 4px; font-family: monospace; white-space: pre-wrap; }
+    .pass { background: #d4edda; }
+    .fail { background: #f8d7da; }
+  </style>
+</head>
+<body>
+  <h1>Stock Limit Validation Test</h1>
+
+  <div class="test-section">
+    <h2>Test Setup</h2>
+    <p>This test validates that cart quantities never exceed available stock.</p>
+    <button onclick="setupTest()">Setup Test Cart</button>
+    <div class="test-result" id="setup-result"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>TEST 1: Normal Increment Within Stock</h2>
+    <p>Stock = 65, Quantity = 1 → Click "+" → Should become 2</p>
+    <button onclick="runTest1()">Run Test 1</button>
+    <div class="test-result" id="test1-result"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>TEST 2: Increment at Near Limit</h2>
+    <p>Stock = 65, Quantity = 64 → Click "+" → Should become 65</p>
+    <button onclick="runTest2()">Run Test 2</button>
+    <div class="test-result" id="test2-result"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>TEST 3: Prevent Increment at Limit</h2>
+    <p>Stock = 65, Quantity = 65 → Click "+" → Should remain 65</p>
+    <button onclick="runTest3()">Run Test 3</button>
+    <div class="test-result" id="test3-result"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>TEST 4: Rapid Clicks at Limit</h2>
+    <p>Stock = 65, Quantity = 65 → Click "+" rapidly 5 times → Should remain 65</p>
+    <button onclick="runTest4()">Run Test 4</button>
+    <div class="test-result" id="test4-result"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>TEST 5: Rapid Clicks Near Limit</h2>
+    <p>Stock = 10, Quantity = 9 → Click "+" 5 times rapidly → Should become 10 (not 11+)</p>
+    <button onclick="runTest5()">Run Test 5</button>
+    <div class="test-result" id="test5-result"></div>
+  </div>
+
+  <script src="/js/api.js?v=4"></script>
+  <script src="/js/cart.js?v=4"></script>
+
+  <script>
+    // Mock cart with test data
+    async function setupTest() {
+      const result = document.getElementById('setup-result');
+      try {
+        // Create a mock cart with test item
+        _cart = {
+          id: 1,
+          items: [
+            {
+              id: 101,
+              product_id: 1,
+              product_name: "Test Product",
+              unit_price: 100,
+              quantity: 1,
+              subtotal: 100,
+              stock_quantity: 65,
+              is_available: true,
+              stock_error: null
+            }
+          ],
+          subtotal: 100,
+          item_count: 1
+        };
+
+        result.textContent = "✅ Test cart setup complete.\nCart item: quantity=1, stock=65";
+        result.className = 'test-result pass';
+      } catch (err) {
+        result.textContent = "❌ Setup failed: " + err.message;
+        result.className = 'test-result fail';
+      }
+    }
+
+    function setItemQuantity(qty) {
+      if (_cart.items[0]) {
+        _cart.items[0].quantity = qty;
+      }
+    }
+
+    function getItemQuantity() {
+      return _cart.items[0]?.quantity || 0;
+    }
+
+    async function runTest1() {
+      const result = document.getElementById('test1-result');
+      try {
+        setItemQuantity(1);
+        const before = getItemQuantity();
+
+        // Simulate clicking "+" (quantity + 1)
+        await changeQty(101, 2);
+
+        const after = getItemQuantity();
+
+        if (after === 2) {
+          result.textContent = `✅ PASS\nBefore: ${before}\nAfter: ${after}\nExpected: 2`;
+          result.className = 'test-result pass';
+        } else {
+          result.textContent = `❌ FAIL\nBefore: ${before}\nAfter: ${after}\nExpected: 2`;
+          result.className = 'test-result fail';
+        }
+      } catch (err) {
+        result.textContent = `❌ ERROR: ${err.message}`;
+        result.className = 'test-result fail';
+      }
+    }
+
+    async function runTest2() {
+      const result = document.getElementById('test2-result');
+      try {
+        setItemQuantity(64);
+        const before = getItemQuantity();
+
+        // Simulate clicking "+" (quantity + 1)
+        await changeQty(101, 65);
+
+        const after = getItemQuantity();
+
+        if (after === 65) {
+          result.textContent = `✅ PASS\nBefore: ${before}\nAfter: ${after}\nExpected: 65`;
+          result.className = 'test-result pass';
+        } else {
+          result.textContent = `❌ FAIL\nBefore: ${before}\nAfter: ${after}\nExpected: 65`;
+          result.className = 'test-result fail';
+        }
+      } catch (err) {
+        result.textContent = `❌ ERROR: ${err.message}`;
+        result.className = 'test-result fail';
+      }
+    }
+
+    async function runTest3() {
+      const result = document.getElementById('test3-result');
+      try {
+        setItemQuantity(65);
+        const before = getItemQuantity();
+
+        // Try to increment beyond stock (should be prevented)
+        await changeQty(101, 66);
+
+        const after = getItemQuantity();
+
+        if (after === 65) {
+          result.textContent = `✅ PASS - Increment prevented\nBefore: ${before}\nAfter: ${after}\nExpected: 65`;
+          result.className = 'test-result pass';
+        } else {
+          result.textContent = `❌ FAIL\nBefore: ${before}\nAfter: ${after}\nExpected: 65`;
+          result.className = 'test-result fail';
+        }
+      } catch (err) {
+        result.textContent = `❌ ERROR: ${err.message}`;
+        result.className = 'test-result fail';
+      }
+    }
+
+    async function runTest4() {
+      const result = document.getElementById('test4-result');
+      try {
+        setItemQuantity(65);
+        const before = getItemQuantity();
+
+        // Rapid clicks at limit (5 times)
+        for (let i = 0; i < 5; i++) {
+          await changeQty(101, 66);
+          await new Promise(r => setTimeout(r, 10));
+        }
+
+        const after = getItemQuantity();
+
+        if (after === 65) {
+          result.textContent = `✅ PASS - Rapid clicks prevented\nBefore: ${before}\nAfter: ${after}\nClicks: 5\nExpected: 65`;
+          result.className = 'test-result pass';
+        } else {
+          result.textContent = `❌ FAIL\nBefore: ${before}\nAfter: ${after}\nExpected: 65`;
+          result.className = 'test-result fail';
+        }
+      } catch (err) {
+        result.textContent = `❌ ERROR: ${err.message}`;
+        result.className = 'test-result fail';
+      }
+    }
+
+    async function runTest5() {
+      const result = document.getElementById('test5-result');
+      try {
+        // Modify stock to 10 for this test
+        _cart.items[0].stock_quantity = 10;
+        setItemQuantity(9);
+        const before = getItemQuantity();
+
+        // Rapid clicks (5 times) - should only reach 10
+        for (let i = 0; i < 5; i++) {
+          await changeQty(101, 10 + (i + 1)); // Try 11, 12, 13, 14, 15
+          await new Promise(r => setTimeout(r, 10));
+        }
+
+        const after = getItemQuantity();
+
+        // After the first increment to 10, others should be prevented
+        if (after === 10) {
+          result.textContent = `✅ PASS - Rapid clicks capped at stock\nBefore: ${before}\nAfter: ${after}\nStock: 10\nClicks: 5`;
+          result.className = 'test-result pass';
+        } else {
+          result.textContent = `❌ FAIL\nBefore: ${before}\nAfter: ${after}\nExpected: 10`;
+          result.className = 'test-result fail';
+        }
+      } catch (err) {
+        result.textContent = `❌ ERROR: ${err.message}`;
+        result.className = 'test-result fail';
+      }
+    }
+  </script>
+</body>
+</html>
