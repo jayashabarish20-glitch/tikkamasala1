@@ -22,7 +22,7 @@ async function loadMyOrders() {
         <div class="card-body" style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap">
           <div>
             <div style="font-weight:700;font-size:1.05rem">${o.order_number}</div>
-            <div class="text-muted" style="font-size:.85rem">${formatDate(o.created_at)}</div>
+            <div class="text-muted" style="font-size:.85rem">${o.placed_time || '—'}</div>
           </div>
           <div style="text-align:center">
             <span class="badge badge-${o.order_type === 'DELIVERY' ? 'info' : 'secondary'}">${o.order_type}</span>

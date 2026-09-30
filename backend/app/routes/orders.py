@@ -210,17 +210,23 @@ async def get_my_orders(request: Request, db: AsyncSession = Depends(get_db)):
     user_id = await get_current_user_id(request)
     result = await db.execute(select(Order).where(Order.user_id == user_id).order_by(Order.created_at.desc()))
     orders = result.scalars().all()
-    return [
-        {
+    out = []
+    for o in orders:
+        placed_time = "—"
+        if o.created_at:
+            ist = timezone(timedelta(hours=5, minutes=30))
+            ist_time = o.created_at.replace(tzinfo=timezone.utc).astimezone(ist)
+            placed_time = ist_time.strftime("%H:%M:%S")
+        out.append({
             "id": o.id,
             "order_number": o.order_number,
             "order_type": o.order_type,
             "total": float(o.total),
             "status": o.status,
             "created_at": o.created_at.isoformat() if o.created_at else None,
-        }
-        for o in orders
-    ]
+            "placed_time": placed_time,
+        })
+    return out
 
 
 @router.get("/{order_id}")

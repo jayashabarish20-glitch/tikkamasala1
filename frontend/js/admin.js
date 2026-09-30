@@ -43,7 +43,7 @@ async function loadAdminOrders() {
         <td><span class="badge badge-${o.payment === 'ONLINE' ? 'info' : 'warning'}">${o.payment}</span></td>
         <td><span class="badge badge-secondary">${o.order_type}</span></td>
         <td><span class="badge status-${o.status === 'COMPLETED' ? 'success' : 'warning'}">${o.status}</span></td>
-        <td>${o.placed_time || timeAgo(o.created_at)}</td>
+        <td>${o.placed_time || '—'}</td>
         <td>
           <div class="actions">
             ${getStatusButtons(o.id, o.backend_status || o.status)}

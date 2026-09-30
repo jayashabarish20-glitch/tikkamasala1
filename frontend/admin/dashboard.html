@@ -218,7 +218,7 @@
             <td><strong>${formatPrice(o.total)}</strong></td>
             <td><span class="badge badge-secondary">${o.order_type}</span></td>
             <td><span class="badge status-${o.status}">${o.status.replace(/_/g,' ')}</span></td>
-            <td>${timeAgo(o.created_at)}</td>
+            <td>${o.placed_time || '—'}</td>
             <td><a href="orders.html" class="btn btn-outline btn-sm">Manage</a></td>
           </tr>
         `).join('');
