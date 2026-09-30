@@ -50,3 +50,7 @@ class OrderResponse(BaseModel):
 class UpdateOrderStatusRequest(BaseModel):
     status: str
     note: Optional[str] = None
+
+
+class VerifyDeliveryOtpRequest(BaseModel):
+    otp: str

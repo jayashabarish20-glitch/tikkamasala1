@@ -58,6 +58,7 @@ async function loadAdminOrders() {
 
 function getStatusButtons(orderId, status) {
   const next = {
+    'PENDING':          [['verify-otp','Verify OTP 🔑','btn-success']],
     'PAYMENT_VERIFIED': [['PREPARING','Start Preparing','btn-secondary'],['CANCELLED','Cancel','btn-ghost']],
     'PREPARING':        [['READY','Mark Ready','btn-accent']],
     'READY':            [['OUT_FOR_DELIVERY','Out for Delivery','btn-primary']],
@@ -103,7 +104,7 @@ async function verifyDeliveryOTP() {
   const btn = document.getElementById('verify-otp-btn');
   setLoading(btn, true, 'Verifying...');
   try {
-    await api.post('/api/delivery-otp/verify', { order_id: orderId, otp });
+    await api.post(`/api/admin/orders/${orderId}/verify-otp`, { otp });
     showToast('Order marked as DELIVERED! 🎉', 'success');
     closeOTPModal();
     loadAdminOrders();

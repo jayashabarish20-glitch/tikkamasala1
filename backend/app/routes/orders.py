@@ -18,10 +18,13 @@ from app.models.order_status_history import OrderStatusHistory
 from app.models.payment import Payment
 from app.models.product import Product
 from app.models.inventory import Inventory
+from app.models.user import User
 from app.schemas.order import CreateOrderRequest
 from app.utils.jwt import decode_token
 from app.utils.location import haversine_distance
+from app.utils.otp import generate_otp
 from app.services.websocket_manager import ws_manager
+from app.services.sms_service import send_delivery_otp_sms
 import random
 import string
 
@@ -175,6 +178,18 @@ async def create_order(req: CreateOrderRequest, request: Request, db: AsyncSessi
         await ws_manager.broadcast_inventory({"type": "stock_update", "product_id": product.id, "stock_quantity": product.stock_quantity, "is_available": product.is_available})
     await db.refresh(order)
 
+    # Step 8.5: Generate and send demo OTP for COD
+    otp = generate_otp(6)
+    order.delivery_otp = otp
+    order.otp_expires_at = datetime.utcnow() + timedelta(hours=12)
+    db.add(order)
+    await db.commit()
+
+    user_result = await db.execute(select(User).where(User.id == user_id))
+    user = user_result.scalars().first()
+    if user:
+        await send_delivery_otp_sms(user.mobile, otp)
+
     # Step 9: Clear cart
     await db.execute(delete(CartItem).where(CartItem.cart_id == cart.id))
     await db.commit()
@@ -308,6 +323,7 @@ async def get_order(order_id: int, request: Request, db: AsyncSession = Depends(
         "payment_method": order.payment_method,
         "payment_status": payment.status if payment else "PENDING",
         "razorpay_order_id": payment.razorpay_order_id if payment else None,
+        "delivery_otp": order.delivery_otp,
         "created_at": order.created_at.isoformat() if order.created_at else None,
         "placed_time": placed_time,
     }

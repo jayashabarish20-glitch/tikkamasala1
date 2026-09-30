@@ -61,6 +61,109 @@ jobs:
             "ubuntu@$EC2_HOST" \
             "echo 'SSH connection successful'"
 
+      - name: Prepare EC2 environment
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          ssh \
+            -i ~/.ssh/tikkamasala.pem \
+            -o StrictHostKeyChecking=yes \
+            -o BatchMode=yes \
+            -o ConnectTimeout=15 \
+            "ubuntu@$EC2_HOST" 'bash -s' <<'REMOTE_SETUP'
+
+          set -e
+
+          echo "========================================"
+          echo "       PREPARING EC2 ENVIRONMENT"
+          echo "========================================"
+
+          echo "Updating package lists..."
+          sudo apt-get update
+
+          echo "Installing required base packages..."
+          sudo apt-get install -y \
+            git \
+            curl \
+            ca-certificates \
+            gnupg \
+            lsb-release
+
+          echo "Checking Docker installation..."
+
+          if ! command -v docker >/dev/null 2>&1; then
+            echo "Docker not found. Installing Docker..."
+
+            sudo install -m 0755 -d /etc/apt/keyrings
+
+            sudo curl -fsSL \
+              https://download.docker.com/linux/ubuntu/gpg \
+              -o /etc/apt/keyrings/docker.asc
+
+            sudo chmod a+r /etc/apt/keyrings/docker.asc
+
+            echo \
+              "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+              $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+              sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+            sudo apt-get update
+
+            sudo apt-get install -y \
+              docker-ce \
+              docker-ce-cli \
+              containerd.io \
+              docker-buildx-plugin \
+              docker-compose-plugin
+
+            sudo systemctl enable docker
+            sudo systemctl start docker
+
+            echo "Docker installation completed."
+          else
+            echo "Docker already installed."
+
+            if ! docker compose version >/dev/null 2>&1; then
+              echo "Docker Compose plugin missing."
+              echo "Installing Docker Compose plugin..."
+
+              sudo apt-get update
+
+              sudo apt-get install -y \
+                docker-compose-plugin
+            fi
+          fi
+
+          echo "Checking Docker service..."
+
+          if ! sudo systemctl is-active --quiet docker; then
+            echo "Docker service is not running. Starting Docker..."
+            sudo systemctl start docker
+          fi
+
+          echo "Checking Git..."
+          git --version
+
+          echo "Checking Docker..."
+          sudo docker --version
+
+          echo "Checking Docker Compose..."
+          sudo docker compose version
+
+          echo "Checking curl..."
+          curl --version | head -n 1
+
+          echo "Adding ubuntu user to docker group..."
+
+          sudo usermod -aG docker ubuntu || true
+
+          echo ""
+          echo "========================================"
+          echo "     EC2 ENVIRONMENT READY"
+          echo "========================================"
+
+          REMOTE_SETUP
+
       - name: Deploy application
         env:
           EC2_HOST: ${{ secrets.EC2_HOST }}
@@ -119,12 +222,17 @@ jobs:
 
           echo ".env file found."
 
+          echo "Checking Docker..."
+
+          sudo docker --version
+          sudo docker compose version
+
           echo "Building and starting containers..."
 
-          docker compose up -d --build --remove-orphans
+          sudo docker compose up -d --build --remove-orphans
 
           echo "Container status:"
-          docker compose ps
+          sudo docker compose ps
 
           echo "Checking backend health..."
 
@@ -144,7 +252,7 @@ jobs:
 
           if [ "$BACKEND_OK" != "true" ]; then
             echo "ERROR: Backend health check failed."
-            docker compose logs backend --tail=100
+            sudo docker compose logs backend --tail=100
             exit 1
           fi
 
@@ -154,7 +262,7 @@ jobs:
             echo "Frontend health check passed."
           else
             echo "ERROR: Frontend health check failed."
-            docker compose logs frontend --tail=100
+            sudo docker compose logs frontend --tail=100
             exit 1
           fi
 

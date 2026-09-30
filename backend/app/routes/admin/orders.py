@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import List, Optional
-from datetime import timezone, timedelta
+from datetime import timezone, timedelta, datetime
 
 from app.config.database import get_db
 from app.models.order import Order
@@ -18,11 +18,13 @@ from app.routes.admin.deps import require_admin
 from app.services.websocket_manager import ws_manager
 from app.config.settings import settings
 from app.utils.location import haversine_distance
+from app.schemas.order import VerifyDeliveryOtpRequest
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/admin", tags=["Admin"])
 
 VALID_TRANSITIONS = {
+    "PENDING": ["PAYMENT_VERIFIED", "CANCELLED", "DELIVERED", "PICKED_UP"],
     "PAYMENT_VERIFIED": ["PREPARING", "CANCELLED"],
     "PREPARING": ["READY", "READY_FOR_PICKUP"],
     "READY": ["OUT_FOR_DELIVERY"],
@@ -276,3 +278,53 @@ async def update_order_status(order_id: int, req: UpdateStatusRequest, request: 
     })
 
     return {"message": f"Order status updated to {req.status}.", "order_id": order.id, "status": req.status}
+
+
+@router.post("/orders/{order_id}/verify-otp")
+async def verify_delivery_otp(order_id: int, req: VerifyDeliveryOtpRequest, request: Request, db: AsyncSession = Depends(get_db)):
+    await require_admin(request)
+    result = await db.execute(select(Order).where(Order.id == order_id))
+    order = result.scalars().first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found.")
+
+    if order.status in ("DELIVERED", "PICKED_UP", "CANCELLED"):
+        raise HTTPException(status_code=400, detail=f"Cannot verify OTP for order with status {order.status}.")
+
+    if not order.delivery_otp:
+        raise HTTPException(status_code=400, detail="No OTP associated with this order.")
+
+    if order.otp_expires_at and datetime.utcnow() > order.otp_expires_at:
+        raise HTTPException(status_code=400, detail="OTP has expired.")
+
+    if order.delivery_otp != req.otp:
+        order.otp_attempts = (order.otp_attempts or 0) + 1
+        db.add(order)
+        await db.commit()
+        raise HTTPException(status_code=400, detail="Invalid OTP.")
+
+    new_status = "DELIVERED" if order.order_type == "DELIVERY" else "PICKED_UP"
+    order.status = new_status
+    order.otp_attempts = 0
+    db.add(OrderStatusHistory(order_id=order.id, status=new_status, changed_by="admin"))
+    await db.commit()
+
+    await ws_manager.send_to_customer(order.user_id, {
+        "event": "ORDER_STATUS_CHANGED",
+        "order_id": order.id,
+        "order_number": order.order_number,
+        "status": new_status,
+        "message": "Order delivery confirmed! Thank you for your purchase.",
+    })
+    await ws_manager.broadcast_to_admins({
+        "event": "ORDER_UPDATED",
+        "order_id": order.id,
+        "order_number": order.order_number,
+        "status": new_status,
+    })
+
+    return {
+        "message": f"OTP verified. Order status updated to {new_status}.",
+        "order_id": order.id,
+        "status": new_status,
+    }
