@@ -40,6 +40,21 @@
     </div>
   </div>
 
+  <!-- Order Info -->
+  <div class="card mb-2">
+    <div class="card-body">
+      <h3 style="margin-bottom:.75rem">Order Information</h3>
+      <div style="display:flex;justify-content:space-between;padding:.4rem 0;font-size:.9rem;border-bottom:1px solid var(--border)">
+        <span class="text-muted">Payment Method</span>
+        <span style="font-weight:600" id="order-payment-method">—</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:.4rem 0;font-size:.9rem">
+        <span class="text-muted">Placed At</span>
+        <span style="font-weight:600" id="order-placed-time">—</span>
+      </div>
+    </div>
+  </div>
+
   <!-- Order items -->
   <div class="card mb-2">
     <div class="card-body">
@@ -70,6 +85,12 @@
     document.getElementById('status-badge').className = `badge status-${order.status}`;
     document.getElementById('status-badge').textContent = order.status.replace(/_/g, ' ');
     document.getElementById('timeline-container').innerHTML = renderOrderTimeline(order.status, order.history);
+
+    // Payment method display: COD or ONLINE
+    const paymentDisplay = order.payment_method === 'COD' ? 'COD' : 'ONLINE';
+    document.getElementById('order-payment-method').textContent = paymentDisplay;
+    document.getElementById('order-placed-time').textContent = order.placed_time || '—';
+
     document.getElementById('order-items').innerHTML = order.items.map(i =>
       `<div style="display:flex;justify-content:space-between;padding:.4rem 0;font-size:.9rem">
         <span>${i.product_name} × ${i.quantity}</span>

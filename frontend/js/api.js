@@ -143,12 +143,11 @@ function setLoading(btn, loading, text = 'Loading...') {
 function formatPrice(n) { return '₹' + Number(n).toFixed(2).replace(/\.00$/, ''); }
 function formatDate(d)  { return d ? new Date(d).toLocaleString('en-IN') : '—'; }
 function timeAgo(d) {
-  const diff = Date.now() - new Date(d).getTime();
-  const m = Math.floor(diff / 60000);
-  if (m < 1) return 'just now';
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
+  if (!d) return '—';
+  const date = new Date(d);
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const seconds = String(date.getSeconds()).padStart(2, '0');
+  return `${hours}:${minutes}:${seconds}`;
 }
 

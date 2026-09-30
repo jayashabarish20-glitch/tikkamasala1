@@ -40,13 +40,13 @@ async function loadAdminOrders() {
         <td>${o.customer_name}<br><small class="text-muted">${o.customer_mobile}</small></td>
         <td>${o.items.map(i => `${i.product_name} ×${i.quantity}`).join('<br>')}</td>
         <td><strong>${formatPrice(o.total)}</strong></td>
-        <td><span class="badge badge-${o.payment_status === 'PAID' ? 'success' : 'warning'}">${o.payment_status}</span></td>
+        <td><span class="badge badge-${o.payment === 'ONLINE' ? 'info' : 'warning'}">${o.payment}</span></td>
         <td><span class="badge badge-secondary">${o.order_type}</span></td>
-        <td><span class="badge status-${o.status}">${o.status.replace(/_/g,' ')}</span></td>
-        <td>${timeAgo(o.created_at)}</td>
+        <td><span class="badge status-${o.status === 'COMPLETED' ? 'success' : 'warning'}">${o.status}</span></td>
+        <td>${o.placed_time || timeAgo(o.created_at)}</td>
         <td>
           <div class="actions">
-            ${getStatusButtons(o.id, o.status)}
+            ${getStatusButtons(o.id, o.backend_status || o.status)}
           </div>
         </td>
       </tr>

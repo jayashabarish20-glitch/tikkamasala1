@@ -125,8 +125,26 @@ async function handleContinueToPayment() {
         showToast('Please detect your location first.', 'warning');
         return;
       }
-      // For GPS mode, use the Google Maps link as the address
-      deliveryData.delivery_address = document.getElementById('delivery-address').value;
+
+      // Validate that typed address is provided even in GPS mode
+      const houseFlatDoor = document.getElementById('delivery-house-flat-door')?.value?.trim();
+      const streetArea = document.getElementById('delivery-street-area')?.value?.trim();
+      const city = document.getElementById('delivery-city')?.value?.trim();
+      const state = document.getElementById('delivery-state')?.value?.trim();
+      const pincode = document.getElementById('delivery-pincode')?.value?.trim();
+
+      if (!houseFlatDoor || !streetArea || !city || !state || !pincode) {
+        showToast('Please enter your delivery address before continuing.', 'warning');
+        return;
+      }
+
+      const completeAddress = `${houseFlatDoor}, ${streetArea}, ${city} - ${pincode}`;
+      deliveryData.delivery_address = completeAddress;
+      deliveryData.delivery_house_flat_door = houseFlatDoor;
+      deliveryData.delivery_street_area = streetArea;
+      deliveryData.delivery_city = city;
+      deliveryData.delivery_state = state;
+      deliveryData.delivery_pincode = pincode;
     }
 
     deliveryData.delivery_lat = lat;

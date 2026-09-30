@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Dict, Any
 
 
 class CreatePaymentRequest(BaseModel):
@@ -10,6 +10,13 @@ class VerifyPaymentRequest(BaseModel):
     razorpay_order_id: str
     razorpay_payment_id: str
     razorpay_signature: str
+
+
+class VerifyOnlinePaymentRequest(BaseModel):
+    razorpay_order_id: str
+    razorpay_payment_id: str
+    razorpay_signature: str
+    order_data: Optional[Dict[str, Any]] = None
 
 
 class PaymentResponse(BaseModel):

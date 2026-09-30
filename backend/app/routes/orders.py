@@ -5,7 +5,7 @@ Full 12-step order process with Haversine 3km validation.
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, func
-from datetime import datetime, date
+from datetime import datetime, date, timezone, timedelta
 from decimal import Decimal
 
 from app.config.database import get_db
@@ -40,9 +40,9 @@ async def get_current_user_id(request: Request) -> int:
 
 async def generate_order_number(db: AsyncSession) -> str:
     today = date.today()
-    day = today.strftime("%d")
-    month = today.strftime("%m")
     year = today.strftime("%Y")
+    month = today.strftime("%m")
+    day = today.strftime("%d")
 
     from sqlalchemy import cast, Date
     today_start = datetime.combine(today, datetime.min.time())
@@ -55,13 +55,16 @@ async def generate_order_number(db: AsyncSession) -> str:
     )
     count = result.scalar() or 0
     sequence = str(count).zfill(4)
-    return f"TM{day}{month}{year}{sequence}"
+    return f"TM{year}{month}{day}{sequence}"
 
 
 @router.post("")
 async def create_order(req: CreateOrderRequest, request: Request, db: AsyncSession = Depends(get_db)):
-    """Full order creation with all validations."""
+    """Full order creation with all validations. For OFFLINE/COD only. ONLINE orders created after payment."""
     user_id = await get_current_user_id(request)
+
+    if req.payment_method == "ONLINE":
+        raise HTTPException(status_code=400, detail="For ONLINE payments, use /api/payments/create-order endpoint.")
 
     # Step 1: Get cart
     cart_result = await db.execute(select(Cart).where(Cart.user_id == user_id))
@@ -147,11 +150,12 @@ async def create_order(req: CreateOrderRequest, request: Request, db: AsyncSessi
         total=total,
         status="PENDING",
         payment_method=req.payment_method,
-        payment_status="PENDING" if req.payment_method == "COD" else "PENDING",
+        payment_status="PENDING",
+        payment_mode="OFFLINE",
         notes=req.notes,
     )
     db.add(order)
-    await db.flush()  # get order.id
+    await db.flush()
 
     # Step 7: Create order items
     for oi in order_items_data:
@@ -252,6 +256,13 @@ async def get_order(order_id: int, request: Request, db: AsyncSession = Depends(
     pay_result = await db.execute(select(Payment).where(Payment.order_id == order.id))
     payment = pay_result.scalars().first()
 
+    # Convert created_at to IST and format as HH:MM:SS
+    placed_time = "—"
+    if order.created_at:
+        ist = timezone(timedelta(hours=5, minutes=30))
+        ist_time = order.created_at.replace(tzinfo=timezone.utc).astimezone(ist)
+        placed_time = ist_time.strftime("%H:%M:%S")
+
     return {
         "id": order.id,
         "order_number": order.order_number,
@@ -264,7 +275,9 @@ async def get_order(order_id: int, request: Request, db: AsyncSession = Depends(
         "status": order.status,
         "items": items_data,
         "history": history,
+        "payment_method": order.payment_method,
         "payment_status": payment.status if payment else "PENDING",
         "razorpay_order_id": payment.razorpay_order_id if payment else None,
         "created_at": order.created_at.isoformat() if order.created_at else None,
+        "placed_time": placed_time,
     }

@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import List, Optional
+from datetime import timezone, timedelta
 
 from app.config.database import get_db
 from app.models.order import Order
@@ -63,6 +64,22 @@ async def list_orders(request: Request, db: AsyncSession = Depends(get_db)):
         if o.delivery_lat is not None and o.delivery_lng is not None:
             google_maps_link = f"https://www.google.com/maps?q={float(o.delivery_lat)},{float(o.delivery_lng)}"
 
+        # Map backend status to simple PENDING/COMPLETED for admin display
+        display_status = "COMPLETED" if o.status in ("DELIVERED", "PICKED_UP") else "PENDING"
+
+        # Payment method: ensure it's always COD or ONLINE (never payment_status)
+        if o.payment_method in ("COD", "ONLINE"):
+            payment_display = o.payment_method
+        else:
+            payment_display = "COD"  # Safe default for any unexpected values
+
+        # Convert created_at to IST and format as HH:MM:SS
+        placed_time = "—"
+        if o.created_at:
+            ist = timezone(timedelta(hours=5, minutes=30))
+            ist_time = o.created_at.replace(tzinfo=timezone.utc).astimezone(ist)
+            placed_time = ist_time.strftime("%H:%M:%S")
+
         out.append({
             "id": o.id,
             "order_number": o.order_number,
@@ -76,10 +93,14 @@ async def list_orders(request: Request, db: AsyncSession = Depends(get_db)):
             "subtotal": float(o.subtotal),
             "delivery_fee": float(o.delivery_fee),
             "total": float(o.total),
-            "status": o.status,
+            "status": display_status,
+            "backend_status": o.status,
+            "payment": payment_display,
             "payment_method": o.payment_method,
+            "payment_mode": o.payment_mode or "OFFLINE",
             "payment_status": o.payment_status or (payment.status if payment else "PENDING"),
             "items": items_data,
+            "placed_time": placed_time,
             "created_at": o.created_at.isoformat() if o.created_at else None,
         })
     return out
@@ -129,6 +150,22 @@ async def get_order(order_id: int, request: Request, db: AsyncSession = Depends(
     if order.delivery_lat is not None and order.delivery_lng is not None:
         google_maps_link = f"https://www.google.com/maps?q={float(order.delivery_lat)},{float(order.delivery_lng)}"
 
+    # Map backend status to simple PENDING/COMPLETED for admin display
+    display_status = "COMPLETED" if order.status in ("DELIVERED", "PICKED_UP") else "PENDING"
+
+    # Payment method: ensure it's always COD or ONLINE (never payment_status)
+    if order.payment_method in ("COD", "ONLINE"):
+        payment_display = order.payment_method
+    else:
+        payment_display = "COD"  # Safe default for any unexpected values
+
+    # Convert created_at to IST and format as HH:MM:SS
+    placed_time = "—"
+    if order.created_at:
+        ist = timezone(timedelta(hours=5, minutes=30))
+        ist_time = order.created_at.replace(tzinfo=timezone.utc).astimezone(ist)
+        placed_time = ist_time.strftime("%H:%M:%S")
+
     return {
         "id": order.id,
         "order_number": order.order_number,
@@ -151,12 +188,16 @@ async def get_order(order_id: int, request: Request, db: AsyncSession = Depends(
         "delivery_fee": float(order.delivery_fee),
         "discount": float(order.discount),
         "total": float(order.total),
-        "status": order.status,
+        "status": display_status,
+        "backend_status": order.status,
+        "payment": payment_display,
         "payment_method": order.payment_method,
+        "payment_mode": order.payment_mode or "OFFLINE",
         "payment_status": order.payment_status or (payment.status if payment else "PENDING"),
         "items": items_data,
         "history": history,
         "notes": order.notes,
+        "placed_time": placed_time,
         "created_at": order.created_at.isoformat() if order.created_at else None,
         "delivery_otp": order.delivery_otp,  # Admin sees OTP for delivery verification
     }

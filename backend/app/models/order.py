@@ -45,6 +45,7 @@ class Order(Base):
     status = Column(String(30), default="PENDING")  # PENDING, ACCEPTED, PREPARING, READY, OUT_FOR_DELIVERY, DELIVERED, CANCELLED
     payment_method = Column(String(20), default="ONLINE")  # ONLINE or COD
     payment_status = Column(String(20), default="PENDING")  # PENDING, PAID, FAILED
+    payment_mode = Column(String(20), default="OFFLINE")  # ONLINE or OFFLINE (mode of payment used)
     delivery_otp = Column(String(10), nullable=True)
     otp_expires_at = Column(DateTime, nullable=True)
     otp_attempts = Column(Integer, default=0)
