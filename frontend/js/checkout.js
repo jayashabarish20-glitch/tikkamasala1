@@ -104,6 +104,15 @@ async function handleContinueToPayment() {
 
       const completeAddress = `${houseFlatDoor}, ${streetArea}, ${city} - ${pincode}${landmark ? ', ' + landmark : ''}`;
 
+      // Populate and validate the typed address field
+      const typedAddressEl = document.getElementById('delivery-address');
+      if (typedAddressEl) typedAddressEl.value = completeAddress;
+
+      if (!completeAddress) {
+        showToast('Please enter a valid typed delivery address.', 'warning');
+        return;
+      }
+
       deliveryData.delivery_address = completeAddress;
       deliveryData.delivery_house_flat_door = houseFlatDoor;
       deliveryData.delivery_street_area = streetArea;
