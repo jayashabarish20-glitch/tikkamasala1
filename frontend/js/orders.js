@@ -48,17 +48,26 @@ async function loadOrderDetail(orderId) {
 }
 
 function renderOrderTimeline(status, history) {
+  // Customer-facing milestones (only 3 steps)
   const steps = [
-    { key: 'NEW',              icon: '📋', label: 'Order Placed' },
+    { key: 'PENDING',          icon: '📋', label: 'Order Placed' },
     { key: 'PAYMENT_VERIFIED', icon: '💳', label: 'Payment Verified' },
-    { key: 'ACCEPTED',         icon: '✅', label: 'Order Accepted' },
-    { key: 'PREPARING',        icon: '🍳', label: 'Preparing' },
-    { key: 'READY',            icon: '📦', label: 'Ready' },
-    { key: 'OUT_FOR_DELIVERY', icon: '🛵', label: 'Out for Delivery' },
     { key: 'DELIVERED',        icon: '🎉', label: 'Delivered' },
   ];
-  const statusOrder = steps.map(s => s.key);
-  const currentIdx = statusOrder.indexOf(status);
+
+  // Map internal backend statuses to customer-facing progress
+  // Intermediate statuses (ACCEPTED, PREPARING, READY, OUT_FOR_DELIVERY) are treated as "in progress to Delivered"
+  const statusMap = {
+    'PENDING': 0,         // Order just created, not yet payment verified
+    'PAYMENT_VERIFIED': 1,
+    'ACCEPTED': 2,        // Map to Delivered (pending) since it's processing
+    'PREPARING': 2,       // Map to Delivered (pending) since it's processing
+    'READY': 2,           // Map to Delivered (pending) since it's processing
+    'OUT_FOR_DELIVERY': 2, // Map to Delivered (pending) since it's processing
+    'DELIVERED': 3,       // Beyond the last step to mark all as completed
+  };
+
+  const currentIdx = statusMap[status] !== undefined ? statusMap[status] : 0;
 
   const histMap = {};
   (history || []).forEach(h => histMap[h.status] = h.created_at);
