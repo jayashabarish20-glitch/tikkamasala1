@@ -9,7 +9,6 @@ async function loadDashboard() {
     setStatCard('stat-orders-today',    stats.orders_today);
     setStatCard('stat-sales-today',     '₹' + (stats.sales_today || 0).toLocaleString('en-IN'));
     setStatCard('stat-pending',         stats.pending_orders);
-    setStatCard('stat-preparing',       stats.preparing_orders);
     setStatCard('stat-completed',       stats.completed_today);
     setStatCard('stat-customers',       stats.total_customers);
     setStatCard('stat-low-stock',       stats.low_stock_items);

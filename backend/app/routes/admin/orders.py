@@ -112,7 +112,7 @@ async def list_orders(request: Request, db: AsyncSession = Depends(get_db)):
             "payment": payment_display,
             "payment_method": o.payment_method,
             "payment_mode": o.payment_mode or "OFFLINE",
-            "payment_status": o.payment_status or (payment.status if payment else "PENDING"),
+            "payment_status": payment.status if payment else o.payment_status,
             "items": items_data,
             "placed_time": placed_time,
             "created_at": o.created_at.isoformat() if o.created_at else None,
@@ -219,7 +219,7 @@ async def get_order(order_id: int, request: Request, db: AsyncSession = Depends(
         "payment": payment_display,
         "payment_method": order.payment_method,
         "payment_mode": order.payment_mode or "OFFLINE",
-        "payment_status": order.payment_status or (payment.status if payment else "PENDING"),
+        "payment_status": payment.status if payment else order.payment_status,
         "items": items_data,
         "history": history,
         "notes": order.notes,
@@ -306,6 +306,8 @@ async def verify_delivery_otp(order_id: int, req: VerifyDeliveryOtpRequest, requ
     new_status = "DELIVERED" if order.order_type == "DELIVERY" else "PICKED_UP"
     order.status = new_status
     order.otp_attempts = 0
+    if order.payment_method == "COD":
+        order.payment_status = "PAID"
     db.add(OrderStatusHistory(order_id=order.id, status=new_status, changed_by="admin"))
     await db.commit()
 

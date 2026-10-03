@@ -80,7 +80,7 @@ _frontend_dir = os.path.abspath(_frontend_dir)
 if os.path.isdir(_frontend_dir):
     # Mount sub-directories so absolute paths like /customer/, /css/, /js/ resolve correctly
     import os as _os
-    for _sub in ("customer", "admin", "css", "js"):
+    for _sub in ("customer", "admin", "css", "js", "assets"):
         _sub_dir = _os.path.join(_frontend_dir, _sub)
         if _os.path.isdir(_sub_dir):
             app.mount(f"/{_sub}", StaticFiles(directory=_sub_dir), name=_sub)

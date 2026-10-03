@@ -55,8 +55,8 @@ async def monthly_sales(
 
     result = await db.execute(
         select(
-            func.year(Order.created_at).label("year"),
-            func.month(Order.created_at).label("month"),
+            func.strftime('%Y', Order.created_at).label("year"),
+            func.strftime('%m', Order.created_at).label("month"),
             func.count(Order.id).label("orders"),
             func.coalesce(func.sum(Order.total), 0).label("revenue"),
         )
@@ -64,12 +64,12 @@ async def monthly_sales(
             Order.created_at >= start_dt,
             Order.status.not_in(["NEW", "CANCELLED"])
         ))
-        .group_by("year", "month")
-        .order_by("year", "month")
+        .group_by(func.strftime('%Y', Order.created_at), func.strftime('%m', Order.created_at))
+        .order_by(func.strftime('%Y', Order.created_at), func.strftime('%m', Order.created_at))
     )
     rows = result.all()
     return [
-        {"year": r.year, "month": r.month, "orders": r.orders, "revenue": float(r.revenue)}
+        {"year": int(r.year), "month": int(r.month), "orders": r.orders, "revenue": float(r.revenue)}
         for r in rows
     ]
 
@@ -108,7 +108,25 @@ async def sales_summary(request: Request, db: AsyncSession = Depends(get_db)):
     today_stats = await get_stats(today_start)
     month_stats = await get_stats(month_start)
 
+    # Get orders by type
+    by_type_result = await db.execute(
+        select(Order.order_type, func.count(Order.id).label("count"))
+        .where(Order.status.not_in(["NEW", "CANCELLED"]))
+        .group_by(Order.order_type)
+    )
+    by_type = {row.order_type: row.count for row in by_type_result.all()}
+
+    # Get orders by status
+    by_status_result = await db.execute(
+        select(Order.status, func.count(Order.id).label("count"))
+        .where(Order.status.not_in(["NEW", "CANCELLED"]))
+        .group_by(Order.status)
+    )
+    by_status = {row.status: row.count for row in by_status_result.all()}
+
     return {
         "today": {"orders": today_stats[0], "revenue": float(today_stats[1])},
         "this_month": {"orders": month_stats[0], "revenue": float(month_stats[1])},
+        "by_type": by_type,
+        "by_status": by_status,
     }

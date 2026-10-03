@@ -17,7 +17,7 @@
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-brand">
         <a href="dashboard.html" class="sidebar-logo">
-          <div class="sidebar-logo-icon">🍛</div>
+          <div class="sidebar-logo-icon"><img src="../assets/tmcc-logo.jpg" alt="TMCC Logo" style="width:40px;height:40px;object-fit:contain;border-radius:4px"></div>
           <div>
             <div class="sidebar-logo-text">Tikka Masala</div>
             <div class="sidebar-logo-sub">Admin Panel</div>
@@ -68,24 +68,12 @@
         <!-- Filters -->
         <div class="admin-section" style="margin-bottom:1.5rem">
           <div class="admin-section-body" style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap">
-            <select id="status-filter" class="form-control" style="width:200px" onchange="filterOrders()">
-              <option value="">All Statuses</option>
-              <option value="NEW">New</option>
-              <option value="PAYMENT_VERIFIED">Payment Verified</option>
-              <option value="PREPARING">Preparing</option>
-              <option value="READY">Ready</option>
-              <option value="OUT_FOR_DELIVERY">Out for Delivery</option>
-              <option value="DELIVERED">Delivered</option>
-              <option value="CANCELLED">Cancelled</option>
-            </select>
             <select id="type-filter" class="form-control" style="width:160px" onchange="filterOrders()">
               <option value="">All Types</option>
               <option value="DELIVERY">Delivery</option>
               <option value="PICKUP">Pickup</option>
             </select>
-            <select id="date-filter" class="form-control" style="width:160px" onchange="filterOrders()">
-              <option value="">All Dates</option>
-            </select>
+            <input type="date" id="date-filter" class="form-control" style="width:160px" onchange="filterOrders()">
             <input type="text" id="search-order" class="form-control" style="width:220px" placeholder="🔍 Search order # or name..." oninput="filterOrders()">
             <button class="btn btn-ghost btn-sm" onclick="clearFilters()">Clear</button>
           </div>
@@ -187,19 +175,7 @@
     }
 
     function populateDateFilter() {
-      const dateFilter = document.getElementById('date-filter');
-      const dates = new Set();
-      allOrders.forEach(o => {
-        const date = new Date(o.created_at).toLocaleDateString('en-IN');
-        dates.add(date);
-      });
-      const sortedDates = Array.from(dates).sort((a, b) => new Date(a.split('/').reverse().join('-')) - new Date(b.split('/').reverse().join('-')));
-      sortedDates.forEach(date => {
-        const option = document.createElement('option');
-        option.value = date;
-        option.textContent = date;
-        dateFilter.appendChild(option);
-      });
+      // Date filter is now a native HTML date input, no population needed
     }
 
     function renderOrders(orders) {
@@ -229,16 +205,14 @@
     }
 
     function filterOrders() {
-      const status = document.getElementById('status-filter').value;
       const type = document.getElementById('type-filter').value;
       const selectedDate = document.getElementById('date-filter').value;
       const search = document.getElementById('search-order').value.toLowerCase();
       const filtered = allOrders.filter(o => {
-        if (status && o.status !== status) return false;
         if (type && o.order_type !== type) return false;
         if (selectedDate) {
-          const orderDate = new Date(o.created_at).toLocaleDateString('en-IN');
-          if (orderDate !== selectedDate) return false;
+          const orderDateOnly = o.created_at.split('T')[0];
+          if (orderDateOnly !== selectedDate) return false;
         }
         if (search && !o.order_number.toLowerCase().includes(search) && !o.customer_name.toLowerCase().includes(search)) return false;
         return true;
@@ -247,7 +221,6 @@
     }
 
     function clearFilters() {
-      document.getElementById('status-filter').value = '';
       document.getElementById('type-filter').value = '';
       document.getElementById('date-filter').value = '';
       document.getElementById('search-order').value = '';
