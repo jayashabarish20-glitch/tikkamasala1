@@ -6,26 +6,6 @@ let _orderType = 'DELIVERY';
 let _addressMode = 'manual'; // 'manual' or 'gps'
 let _loggedInUser = null;
 
-function setOrderType(type) {
-  _orderType = type;
-  const deliverySection = document.getElementById('delivery-section');
-  const pickupNote = document.getElementById('pickup-note');
-  const deliveryBtn = document.getElementById('type-delivery');
-  const pickupBtn = document.getElementById('type-pickup');
-
-  if (type === 'DELIVERY') {
-    deliverySection && deliverySection.classList.remove('hidden');
-    pickupNote && pickupNote.classList.add('hidden');
-    deliveryBtn && deliveryBtn.classList.add('active');
-    pickupBtn && pickupBtn.classList.remove('active');
-  } else {
-    deliverySection && deliverySection.classList.add('hidden');
-    pickupNote && pickupNote.classList.remove('hidden');
-    pickupBtn && pickupBtn.classList.add('active');
-    deliveryBtn && deliveryBtn.classList.remove('active');
-  }
-}
-
 function setAddressMode(mode) {
   _addressMode = mode;
   const manualBtn = document.getElementById('manual-address-btn');
@@ -68,88 +48,82 @@ async function handleContinueToPayment() {
   }
 
   const deliveryData = {
-    order_type: _orderType,
+    order_type: 'DELIVERY',
     notes: document.getElementById('notes')?.value || '',
     customer_name: customerName,
     customer_mobile: customerMobile,
   };
 
-  if (_orderType === 'DELIVERY') {
-    const lat = parseFloat(document.getElementById('delivery-lat')?.value || '');
-    const lng = parseFloat(document.getElementById('delivery-lng')?.value || '');
+  const lat = parseFloat(document.getElementById('delivery-lat')?.value || '');
+  const lng = parseFloat(document.getElementById('delivery-lng')?.value || '');
 
-    if (!lat || !lng) {
-      showToast('Please select your delivery location (either type address or use GPS).', 'warning');
-      return;
-    }
-
-    if (_deliveryEligible === false) {
-      showToast('Sorry, delivery is available only within 5 km of our shop.', 'error');
-      return;
-    }
-
-    // Collect address fields
-    if (_addressMode === 'manual') {
-      const houseFlatDoor = document.getElementById('delivery-house-flat-door')?.value?.trim();
-      const streetArea = document.getElementById('delivery-street-area')?.value?.trim();
-      const city = document.getElementById('delivery-city')?.value?.trim();
-      const state = document.getElementById('delivery-state')?.value?.trim();
-      const pincode = document.getElementById('delivery-pincode')?.value?.trim();
-      const landmark = document.getElementById('delivery-landmark')?.value?.trim();
-
-      if (!houseFlatDoor || !streetArea || !city || !state || !pincode) {
-        showToast('Please fill all required address fields.', 'warning');
-        return;
-      }
-
-      const completeAddress = `${houseFlatDoor}, ${streetArea}, ${city} - ${pincode}${landmark ? ', ' + landmark : ''}`;
-
-      // Populate and validate the typed address field
-      const typedAddressEl = document.getElementById('delivery-address');
-      if (typedAddressEl) typedAddressEl.value = completeAddress;
-
-      if (!completeAddress) {
-        showToast('Please enter a valid typed delivery address.', 'warning');
-        return;
-      }
-
-      deliveryData.delivery_address = completeAddress;
-      deliveryData.delivery_house_flat_door = houseFlatDoor;
-      deliveryData.delivery_street_area = streetArea;
-      deliveryData.delivery_city = city;
-      deliveryData.delivery_state = state;
-      deliveryData.delivery_pincode = pincode;
-      if (landmark) deliveryData.delivery_landmark = landmark;
-    } else {
-      if (!document.getElementById('delivery-address')?.value) {
-        showToast('Please detect your location first.', 'warning');
-        return;
-      }
-
-      // Validate that typed address is provided even in GPS mode
-      const houseFlatDoor = document.getElementById('delivery-house-flat-door')?.value?.trim();
-      const streetArea = document.getElementById('delivery-street-area')?.value?.trim();
-      const city = document.getElementById('delivery-city')?.value?.trim();
-      const state = document.getElementById('delivery-state')?.value?.trim();
-      const pincode = document.getElementById('delivery-pincode')?.value?.trim();
-
-      if (!houseFlatDoor || !streetArea || !city || !state || !pincode) {
-        showToast('Please enter your delivery address before continuing.', 'warning');
-        return;
-      }
-
-      const completeAddress = `${houseFlatDoor}, ${streetArea}, ${city} - ${pincode}`;
-      deliveryData.delivery_address = completeAddress;
-      deliveryData.delivery_house_flat_door = houseFlatDoor;
-      deliveryData.delivery_street_area = streetArea;
-      deliveryData.delivery_city = city;
-      deliveryData.delivery_state = state;
-      deliveryData.delivery_pincode = pincode;
-    }
-
-    deliveryData.delivery_lat = lat;
-    deliveryData.delivery_lng = lng;
+  if (!lat || !lng) {
+    showToast('Please select your delivery location (either type address or use GPS).', 'warning');
+    return;
   }
+
+  if (_deliveryEligible === false) {
+    showToast('Sorry, delivery is available only within 5 km of our shop.', 'error');
+    return;
+  }
+
+  if (_addressMode === 'manual') {
+    const houseFlatDoor = document.getElementById('delivery-house-flat-door')?.value?.trim();
+    const streetArea = document.getElementById('delivery-street-area')?.value?.trim();
+    const city = document.getElementById('delivery-city')?.value?.trim();
+    const state = document.getElementById('delivery-state')?.value?.trim();
+    const pincode = document.getElementById('delivery-pincode')?.value?.trim();
+    const landmark = document.getElementById('delivery-landmark')?.value?.trim();
+
+    if (!houseFlatDoor || !streetArea || !city || !state || !pincode) {
+      showToast('Please fill all required address fields.', 'warning');
+      return;
+    }
+
+    const completeAddress = `${houseFlatDoor}, ${streetArea}, ${city} - ${pincode}${landmark ? ', ' + landmark : ''}`;
+    const typedAddressEl = document.getElementById('delivery-address');
+    if (typedAddressEl) typedAddressEl.value = completeAddress;
+
+    if (!completeAddress) {
+      showToast('Please enter a valid typed delivery address.', 'warning');
+      return;
+    }
+
+    deliveryData.delivery_address = completeAddress;
+    deliveryData.delivery_house_flat_door = houseFlatDoor;
+    deliveryData.delivery_street_area = streetArea;
+    deliveryData.delivery_city = city;
+    deliveryData.delivery_state = state;
+    deliveryData.delivery_pincode = pincode;
+    if (landmark) deliveryData.delivery_landmark = landmark;
+  } else {
+    if (!document.getElementById('delivery-address')?.value) {
+      showToast('Please detect your location first.', 'warning');
+      return;
+    }
+
+    const houseFlatDoor = document.getElementById('delivery-house-flat-door')?.value?.trim();
+    const streetArea = document.getElementById('delivery-street-area')?.value?.trim();
+    const city = document.getElementById('delivery-city')?.value?.trim();
+    const state = document.getElementById('delivery-state')?.value?.trim();
+    const pincode = document.getElementById('delivery-pincode')?.value?.trim();
+
+    if (!houseFlatDoor || !streetArea || !city || !state || !pincode) {
+      showToast('Please enter your delivery address before continuing.', 'warning');
+      return;
+    }
+
+    const completeAddress = `${houseFlatDoor}, ${streetArea}, ${city} - ${pincode}`;
+    deliveryData.delivery_address = completeAddress;
+    deliveryData.delivery_house_flat_door = houseFlatDoor;
+    deliveryData.delivery_street_area = streetArea;
+    deliveryData.delivery_city = city;
+    deliveryData.delivery_state = state;
+    deliveryData.delivery_pincode = pincode;
+  }
+
+  deliveryData.delivery_lat = lat;
+  deliveryData.delivery_lng = lng;
 
   // Save delivery data to session storage for payment method page
   sessionStorage.setItem('pending_delivery_data', JSON.stringify(deliveryData));
@@ -182,9 +156,9 @@ async function loadCheckoutSummary() {
       ).join('');
     }
     if (subtotalEl) subtotalEl.textContent = formatPrice(cart.subtotal);
-    if (deliveryEl) deliveryEl.textContent = _orderType === 'DELIVERY' ? '₹30' : '₹0';
+    if (deliveryEl) deliveryEl.textContent = '₹30';
     if (totalEl) {
-      const total = cart.subtotal + (_orderType === 'DELIVERY' ? 30 : 0);
+      const total = cart.subtotal + 30;
       totalEl.textContent = formatPrice(total);
     }
   } catch (err) {

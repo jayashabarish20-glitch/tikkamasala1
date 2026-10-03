@@ -68,10 +68,10 @@
         <!-- Filters -->
         <div class="admin-section" style="margin-bottom:1.5rem">
           <div class="admin-section-body" style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap">
-            <select id="type-filter" class="form-control" style="width:160px" onchange="filterOrders()">
-              <option value="">All Types</option>
-              <option value="DELIVERY">Delivery</option>
-              <option value="PICKUP">Pickup</option>
+            <select id="status-filter" class="form-control" style="width:160px" onchange="filterOrders()">
+              <option value="">All Statuses</option>
+              <option value="PENDING">Pending</option>
+              <option value="DELIVERED">Delivered</option>
             </select>
             <input type="date" id="date-filter" class="form-control" style="width:160px" onchange="filterOrders()">
             <input type="text" id="search-order" class="form-control" style="width:220px" placeholder="🔍 Search order # or name..." oninput="filterOrders()">
@@ -163,14 +163,14 @@
 
     async function loadAdminOrders() {
       const container = document.getElementById('admin-orders-table-body');
-      container.innerHTML = '<tr><td colspan="9" class="text-center text-muted" style="padding:3rem">Loading...</td></tr>';
+      container.innerHTML = '<tr><td colspan="11" class="text-center text-muted" style="padding:3rem">Loading...</td></tr>';
       try {
         allOrders = await api.get('/api/admin/orders');
         document.getElementById('orders-count').textContent = `${allOrders.length} total orders`;
         populateDateFilter();
-        renderOrders(allOrders);
+        filterOrders();
       } catch (err) {
-        container.innerHTML = `<tr><td colspan="9"><div class="alert alert-error">${err.message}</div></td></tr>`;
+        container.innerHTML = `<tr><td colspan="11"><div class="alert alert-error">${err.message}</div></td></tr>`;
       }
     }
 
@@ -205,13 +205,16 @@
     }
 
     function filterOrders() {
-      const type = document.getElementById('type-filter').value;
+      const status = document.getElementById('status-filter').value;
       const selectedDate = document.getElementById('date-filter').value;
       const search = document.getElementById('search-order').value.toLowerCase();
       const filtered = allOrders.filter(o => {
-        if (type && o.order_type !== type) return false;
+        if (status === 'PENDING' && o.backend_status === 'DELIVERED') return false;
+        if (status === 'DELIVERED' && o.backend_status !== 'DELIVERED') return false;
         if (selectedDate) {
-          const orderDateOnly = o.created_at.split('T')[0];
+          const utcDate = new Date(o.created_at + 'Z');
+          const istDate = new Date(utcDate.getTime() + 5.5 * 60 * 60 * 1000);
+          const orderDateOnly = istDate.toISOString().split('T')[0];
           if (orderDateOnly !== selectedDate) return false;
         }
         if (search && !o.order_number.toLowerCase().includes(search) && !o.customer_name.toLowerCase().includes(search)) return false;
@@ -221,7 +224,7 @@
     }
 
     function clearFilters() {
-      document.getElementById('type-filter').value = '';
+      document.getElementById('status-filter').value = '';
       document.getElementById('date-filter').value = '';
       document.getElementById('search-order').value = '';
       renderOrders(allOrders);

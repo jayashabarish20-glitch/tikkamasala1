@@ -354,7 +354,6 @@ function handleNewOrderNotification(data) {
         </div>
         <div style="font-weight:700;color:var(--primary);margin-top:.5rem">${formatPrice(order.total)}</div>
         <div class="notification-actions">
-          <button class="btn btn-secondary btn-sm" onclick="updateOrderStatus(${order.id},'PREPARING');document.getElementById('notif-${order.id}').remove()">🍽️ Start Preparing</button>
           <button class="btn btn-ghost btn-sm" onclick="document.getElementById('notif-${order.id}').remove()">Dismiss</button>
         </div>
       </div>
