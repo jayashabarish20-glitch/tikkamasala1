@@ -182,6 +182,7 @@ async def create_order(req: CreateOrderRequest, request: Request, db: AsyncSessi
     otp = generate_otp(6)
     order.delivery_otp = otp
     order.otp_expires_at = datetime.utcnow() + timedelta(hours=12)
+    order.otp_attempts = 0
     db.add(order)
     await db.commit()
 
