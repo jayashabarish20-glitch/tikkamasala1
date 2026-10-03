@@ -19,11 +19,11 @@ class MockSMSProvider(SMSProvider):
 
     async def send_sms(self, mobile: str, message: str) -> bool:
         logger.info(f"\n{'='*50}")
-        logger.info(f"📱 MOCK SMS TO: {mobile}")
+        logger.info(f"MOCK SMS TO: {mobile}")
         logger.info(f"MESSAGE: {message}")
         logger.info(f"{'='*50}\n")
         print(f"\n{'='*50}")
-        print(f"📱 MOCK SMS TO: {mobile}")
+        print(f"MOCK SMS TO: {mobile}")
         print(f"MESSAGE: {message}")
         print(f"{'='*50}\n")
         return True

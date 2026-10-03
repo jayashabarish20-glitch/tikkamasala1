@@ -9,6 +9,7 @@ class OrderType(str, enum.Enum):
 
 
 class OrderStatus(str, enum.Enum):
+    PENDING = "PENDING"
     NEW = "NEW"
     PAYMENT_VERIFIED = "PAYMENT_VERIFIED"
     ACCEPTED = "ACCEPTED"
