@@ -165,6 +165,7 @@ async def create_order(req: CreateOrderRequest, request: Request, db: AsyncSessi
         db.add(OrderItem(
             order_id=order.id,
             product_id=oi["product_id"],
+            product_name=oi["product_name"],
             quantity=oi["quantity"],
             unit_price=oi["unit_price"],
             subtotal=oi["subtotal"],
