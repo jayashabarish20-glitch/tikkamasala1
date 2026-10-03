@@ -145,8 +145,8 @@ async def create_order(req: CreateOrderRequest, request: Request, db: AsyncSessi
         delivery_state=req.delivery_state,
         delivery_pincode=req.delivery_pincode,
         delivery_landmark=req.delivery_landmark,
-        delivery_lat=Decimal(str(req.delivery_lat)) if req.delivery_lat else None,
-        delivery_lng=Decimal(str(req.delivery_lng)) if req.delivery_lng else None,
+        delivery_lat=Decimal(str(req.delivery_lat)) if req.delivery_lat is not None else None,
+        delivery_lng=Decimal(str(req.delivery_lng)) if req.delivery_lng is not None else None,
         subtotal=subtotal,
         delivery_fee=delivery_fee,
         discount=discount,
@@ -182,7 +182,7 @@ async def create_order(req: CreateOrderRequest, request: Request, db: AsyncSessi
     # Step 8.5: Generate and send demo OTP for COD
     otp = generate_otp(6)
     order.delivery_otp = otp
-    order.otp_expires_at = datetime.utcnow() + timedelta(hours=12)
+    order.otp_expires_at = datetime.now(timezone.utc) + timedelta(hours=12)
     order.otp_attempts = 0
     db.add(order)
     await db.commit()
