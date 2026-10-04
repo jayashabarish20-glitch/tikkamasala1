@@ -45,7 +45,7 @@ async function loadAdminOrders() {
         <td>${o.placed_time || '—'}</td>
         <td>
           <div class="actions">
-            ${getStatusButtons(o.id, o.backend_status || o.status)}
+            ${getStatusButtons(o.id, o.backend_status || o.status, o.payment_method)}
           </div>
         </td>
       </tr>
@@ -55,7 +55,12 @@ async function loadAdminOrders() {
   }
 }
 
-function getStatusButtons(orderId, status) {
+function getStatusButtons(orderId, status, paymentMethod) {
+  const finalStates = ['DELIVERED', 'PICKED_UP', 'CANCELLED'];
+  if (paymentMethod === 'ONLINE') {
+    if (finalStates.includes(status)) return '';
+    return `<button class="btn btn-success btn-sm" onclick="openOTPModal(${orderId})">🔑 Verify OTP</button>`;
+  }
   const next = {
     'PENDING':          [['verify-otp','Verify OTP 🔑','btn-success']],
     'PAYMENT_VERIFIED': [['PREPARING','Start Preparing','btn-secondary'],['CANCELLED','Cancel','btn-ghost']],

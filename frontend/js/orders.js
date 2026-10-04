@@ -48,35 +48,46 @@ async function loadOrderDetail(orderId) {
 }
 
 function renderOrderTimeline(status, history) {
-  // Customer-facing milestones (only 3 steps)
-  const steps = [
-    { key: 'PENDING',          icon: '📋', label: 'Order Placed' },
-    { key: 'PAYMENT_VERIFIED', icon: '💳', label: 'Payment Verified' },
-    { key: 'DELIVERED',        icon: '🎉', label: 'Delivered' },
-  ];
-
-  // Map internal backend statuses to customer-facing progress
-  // Intermediate statuses (ACCEPTED, PREPARING, READY, OUT_FOR_DELIVERY) are treated as "in progress to Delivered"
-  const statusMap = {
-    'PENDING': 0,         // Order just created, not yet payment verified
-    'PAYMENT_VERIFIED': 1,
-    'ACCEPTED': 2,        // Map to Delivered (pending) since it's processing
-    'PREPARING': 2,       // Map to Delivered (pending) since it's processing
-    'READY': 2,           // Map to Delivered (pending) since it's processing
-    'OUT_FOR_DELIVERY': 2, // Map to Delivered (pending) since it's processing
-    'DELIVERED': 3,       // Beyond the last step to mark all as completed
-  };
-
-  const currentIdx = statusMap[status] !== undefined ? statusMap[status] : 0;
-
   const histMap = {};
   (history || []).forEach(h => histMap[h.status] = h.created_at);
 
+  // Explicit completion checks — avoids ambiguity of index-based currentIdx approach
+  const orderPlacedCompleted = true; // every successfully created order has this done
+
+  const paymentVerifiedStatuses = new Set([
+    'PAYMENT_VERIFIED', 'ACCEPTED', 'PREPARING', 'READY', 'OUT_FOR_DELIVERY', 'DELIVERED'
+  ]);
+  const paymentVerifiedCompleted = paymentVerifiedStatuses.has(status);
+
+  const deliveryCompleted = status === 'DELIVERED';
+
+  const steps = [
+    {
+      icon: '📋',
+      label: 'Order Placed',
+      completed: orderPlacedCompleted,
+      timeKey: 'PENDING',
+    },
+    {
+      icon: '💳',
+      label: 'Payment Verified',
+      completed: paymentVerifiedCompleted,
+      timeKey: 'PAYMENT_VERIFIED',
+    },
+    {
+      icon: '🎉',
+      label: 'Delivery Completed',
+      completed: deliveryCompleted,
+      timeKey: 'DELIVERED',
+    },
+  ];
+
   return `<div class="order-timeline">` + steps.map((step, i) => {
-    const done    = i < currentIdx;
-    const active  = i === currentIdx;
-    const cls     = done ? 'completed' : active ? 'active' : '';
-    const time    = histMap[step.key] ? formatDate(histMap[step.key]) : '';
+    const done   = step.completed;
+    // A step is active if it is not yet completed but the previous step is completed
+    const active = !done && (i === 0 || steps[i - 1].completed);
+    const cls    = done ? 'completed' : active ? 'active' : '';
+    const time   = histMap[step.timeKey] ? formatDate(histMap[step.timeKey]) : '';
     return `
       <div class="timeline-step ${cls}">
         <div class="timeline-dot">${done ? '✓' : step.icon}</div>
