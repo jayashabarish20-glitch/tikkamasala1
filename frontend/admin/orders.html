@@ -197,7 +197,7 @@
           <td>
             <div class="actions">
               <button class="btn btn-ghost btn-sm" onclick="viewOrderDetail(${o.id})" title="View Details">🔍</button>
-              ${getStatusButtons(o.id, o.backend_status || o.status)}
+              ${getStatusButtons(o.id, o.backend_status || o.status, o.payment_method)}
             </div>
           </td>
         </tr>
