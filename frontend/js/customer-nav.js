@@ -11,7 +11,7 @@
     { href: '/customer/profile.html', icon: '👤', label: 'Profile', match: ['/customer/profile.html'] },
   ];
 
-  const LOGO_MARK = '🫙';
+  const LOGO_MARK = '<img src="/assets/tmcc-logo.jpg" alt="TMCC Logo" class="tmcc-logo-img" style="width:40px;height:40px;object-fit:contain">';
 
   function currentPath() {
     return window.location.pathname || '';

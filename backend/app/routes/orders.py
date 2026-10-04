@@ -47,18 +47,28 @@ async def generate_order_number(db: AsyncSession) -> str:
     month = today.strftime("%m")
     day = today.strftime("%d")
 
-    from sqlalchemy import cast, Date
-    today_start = datetime.combine(today, datetime.min.time())
-    today_end = datetime.combine(today, datetime.max.time())
+    today_prefix = f"TM{year}{month}{day}"
 
     result = await db.execute(
-        select(func.count(Order.id)).where(
-            (Order.created_at >= today_start) & (Order.created_at <= today_end)
+        select(Order.order_number).where(
+            Order.order_number.like(f"{today_prefix}%")
         )
     )
-    count = result.scalar() or 0
-    sequence = str(count).zfill(4)
-    return f"TM{year}{month}{day}{sequence}"
+    order_numbers = result.scalars().all()
+
+    max_sequence = -1
+    for order_num in order_numbers:
+        if order_num.startswith(today_prefix):
+            try:
+                sequence_str = order_num[len(today_prefix):]
+                sequence = int(sequence_str)
+                max_sequence = max(max_sequence, sequence)
+            except (ValueError, IndexError):
+                pass
+
+    next_sequence = max_sequence + 1
+    sequence = str(next_sequence).zfill(4)
+    return f"{today_prefix}{sequence}"
 
 
 @router.post("")
@@ -145,8 +155,8 @@ async def create_order(req: CreateOrderRequest, request: Request, db: AsyncSessi
         delivery_state=req.delivery_state,
         delivery_pincode=req.delivery_pincode,
         delivery_landmark=req.delivery_landmark,
-        delivery_lat=Decimal(str(req.delivery_lat)) if req.delivery_lat else None,
-        delivery_lng=Decimal(str(req.delivery_lng)) if req.delivery_lng else None,
+        delivery_lat=Decimal(str(req.delivery_lat)) if req.delivery_lat is not None else None,
+        delivery_lng=Decimal(str(req.delivery_lng)) if req.delivery_lng is not None else None,
         subtotal=subtotal,
         delivery_fee=delivery_fee,
         discount=discount,
@@ -165,6 +175,7 @@ async def create_order(req: CreateOrderRequest, request: Request, db: AsyncSessi
         db.add(OrderItem(
             order_id=order.id,
             product_id=oi["product_id"],
+            product_name=oi["product_name"],
             quantity=oi["quantity"],
             unit_price=oi["unit_price"],
             subtotal=oi["subtotal"],
@@ -181,7 +192,8 @@ async def create_order(req: CreateOrderRequest, request: Request, db: AsyncSessi
     # Step 8.5: Generate and send demo OTP for COD
     otp = generate_otp(6)
     order.delivery_otp = otp
-    order.otp_expires_at = datetime.utcnow() + timedelta(hours=12)
+    order.otp_expires_at = datetime.now(timezone.utc) + timedelta(hours=12)
+    order.otp_attempts = 0
     db.add(order)
     await db.commit()
 

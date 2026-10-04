@@ -9,7 +9,6 @@ async function loadDashboard() {
     setStatCard('stat-orders-today',    stats.orders_today);
     setStatCard('stat-sales-today',     '₹' + (stats.sales_today || 0).toLocaleString('en-IN'));
     setStatCard('stat-pending',         stats.pending_orders);
-    setStatCard('stat-preparing',       stats.preparing_orders);
     setStatCard('stat-completed',       stats.completed_today);
     setStatCard('stat-customers',       stats.total_customers);
     setStatCard('stat-low-stock',       stats.low_stock_items);
@@ -46,7 +45,7 @@ async function loadAdminOrders() {
         <td>${o.placed_time || '—'}</td>
         <td>
           <div class="actions">
-            ${getStatusButtons(o.id, o.backend_status || o.status)}
+            ${getStatusButtons(o.id, o.backend_status || o.status, o.payment_method)}
           </div>
         </td>
       </tr>
@@ -56,7 +55,12 @@ async function loadAdminOrders() {
   }
 }
 
-function getStatusButtons(orderId, status) {
+function getStatusButtons(orderId, status, paymentMethod) {
+  const finalStates = ['DELIVERED', 'PICKED_UP', 'CANCELLED'];
+  if (paymentMethod === 'ONLINE') {
+    if (finalStates.includes(status)) return '';
+    return `<button class="btn btn-success btn-sm" onclick="openOTPModal(${orderId})">🔑 Verify OTP</button>`;
+  }
   const next = {
     'PENDING':          [['verify-otp','Verify OTP 🔑','btn-success']],
     'PAYMENT_VERIFIED': [['PREPARING','Start Preparing','btn-secondary'],['CANCELLED','Cancel','btn-ghost']],
@@ -355,7 +359,6 @@ function handleNewOrderNotification(data) {
         </div>
         <div style="font-weight:700;color:var(--primary);margin-top:.5rem">${formatPrice(order.total)}</div>
         <div class="notification-actions">
-          <button class="btn btn-secondary btn-sm" onclick="updateOrderStatus(${order.id},'PREPARING');document.getElementById('notif-${order.id}').remove()">🍽️ Start Preparing</button>
           <button class="btn btn-ghost btn-sm" onclick="document.getElementById('notif-${order.id}').remove()">Dismiss</button>
         </div>
       </div>

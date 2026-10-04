@@ -17,7 +17,7 @@
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-brand">
         <a href="dashboard.html" class="sidebar-logo">
-          <div class="sidebar-logo-icon">🍛</div>
+          <div class="sidebar-logo-icon"><img src="../assets/tmcc-logo.jpg" alt="TMCC Logo" style="width:40px;height:40px;object-fit:contain;border-radius:4px"></div>
           <div>
             <div class="sidebar-logo-text">Tikka Masala</div>
             <div class="sidebar-logo-sub">Admin Panel</div>
@@ -68,24 +68,12 @@
         <!-- Filters -->
         <div class="admin-section" style="margin-bottom:1.5rem">
           <div class="admin-section-body" style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap">
-            <select id="status-filter" class="form-control" style="width:200px" onchange="filterOrders()">
+            <select id="status-filter" class="form-control" style="width:160px" onchange="filterOrders()">
               <option value="">All Statuses</option>
-              <option value="NEW">New</option>
-              <option value="PAYMENT_VERIFIED">Payment Verified</option>
-              <option value="PREPARING">Preparing</option>
-              <option value="READY">Ready</option>
-              <option value="OUT_FOR_DELIVERY">Out for Delivery</option>
+              <option value="PENDING">Pending</option>
               <option value="DELIVERED">Delivered</option>
-              <option value="CANCELLED">Cancelled</option>
             </select>
-            <select id="type-filter" class="form-control" style="width:160px" onchange="filterOrders()">
-              <option value="">All Types</option>
-              <option value="DELIVERY">Delivery</option>
-              <option value="PICKUP">Pickup</option>
-            </select>
-            <select id="date-filter" class="form-control" style="width:160px" onchange="filterOrders()">
-              <option value="">All Dates</option>
-            </select>
+            <input type="date" id="date-filter" class="form-control" style="width:160px" onchange="filterOrders()">
             <input type="text" id="search-order" class="form-control" style="width:220px" placeholder="🔍 Search order # or name..." oninput="filterOrders()">
             <button class="btn btn-ghost btn-sm" onclick="clearFilters()">Clear</button>
           </div>
@@ -175,31 +163,19 @@
 
     async function loadAdminOrders() {
       const container = document.getElementById('admin-orders-table-body');
-      container.innerHTML = '<tr><td colspan="9" class="text-center text-muted" style="padding:3rem">Loading...</td></tr>';
+      container.innerHTML = '<tr><td colspan="11" class="text-center text-muted" style="padding:3rem">Loading...</td></tr>';
       try {
         allOrders = await api.get('/api/admin/orders');
         document.getElementById('orders-count').textContent = `${allOrders.length} total orders`;
         populateDateFilter();
-        renderOrders(allOrders);
+        filterOrders();
       } catch (err) {
-        container.innerHTML = `<tr><td colspan="9"><div class="alert alert-error">${err.message}</div></td></tr>`;
+        container.innerHTML = `<tr><td colspan="11"><div class="alert alert-error">${err.message}</div></td></tr>`;
       }
     }
 
     function populateDateFilter() {
-      const dateFilter = document.getElementById('date-filter');
-      const dates = new Set();
-      allOrders.forEach(o => {
-        const date = new Date(o.created_at).toLocaleDateString('en-IN');
-        dates.add(date);
-      });
-      const sortedDates = Array.from(dates).sort((a, b) => new Date(a.split('/').reverse().join('-')) - new Date(b.split('/').reverse().join('-')));
-      sortedDates.forEach(date => {
-        const option = document.createElement('option');
-        option.value = date;
-        option.textContent = date;
-        dateFilter.appendChild(option);
-      });
+      // Date filter is now a native HTML date input, no population needed
     }
 
     function renderOrders(orders) {
@@ -221,7 +197,7 @@
           <td>
             <div class="actions">
               <button class="btn btn-ghost btn-sm" onclick="viewOrderDetail(${o.id})" title="View Details">🔍</button>
-              ${getStatusButtons(o.id, o.backend_status || o.status)}
+              ${getStatusButtons(o.id, o.backend_status || o.status, o.payment_method)}
             </div>
           </td>
         </tr>
@@ -230,15 +206,16 @@
 
     function filterOrders() {
       const status = document.getElementById('status-filter').value;
-      const type = document.getElementById('type-filter').value;
       const selectedDate = document.getElementById('date-filter').value;
       const search = document.getElementById('search-order').value.toLowerCase();
       const filtered = allOrders.filter(o => {
-        if (status && o.status !== status) return false;
-        if (type && o.order_type !== type) return false;
+        if (status === 'PENDING' && o.backend_status === 'DELIVERED') return false;
+        if (status === 'DELIVERED' && o.backend_status !== 'DELIVERED') return false;
         if (selectedDate) {
-          const orderDate = new Date(o.created_at).toLocaleDateString('en-IN');
-          if (orderDate !== selectedDate) return false;
+          const utcDate = new Date(o.created_at + 'Z');
+          const istDate = new Date(utcDate.getTime() + 5.5 * 60 * 60 * 1000);
+          const orderDateOnly = istDate.toISOString().split('T')[0];
+          if (orderDateOnly !== selectedDate) return false;
         }
         if (search && !o.order_number.toLowerCase().includes(search) && !o.customer_name.toLowerCase().includes(search)) return false;
         return true;
@@ -248,7 +225,6 @@
 
     function clearFilters() {
       document.getElementById('status-filter').value = '';
-      document.getElementById('type-filter').value = '';
       document.getElementById('date-filter').value = '';
       document.getElementById('search-order').value = '';
       renderOrders(allOrders);
@@ -259,12 +235,20 @@
     async function viewOrderDetail(orderId) {
       const modal = document.getElementById('order-detail-modal');
       const body = document.getElementById('order-detail-body');
+      const whatsappBtn = document.getElementById('whatsapp-btn');
       modal.classList.remove('hidden');
       body.innerHTML = '<div class="text-center" style="padding:2rem"><span class="spinner"></span></div>';
       try {
         const o = await api.get(`/api/admin/orders/${orderId}`);
         _currentOrderDetail = o; // Store for WhatsApp
         document.getElementById('order-detail-title').textContent = `Order ${o.order_number}`;
+
+        // Show WhatsApp button only for DELIVERY orders
+        if (o.order_type === 'DELIVERY') {
+          whatsappBtn.style.display = 'block';
+        } else {
+          whatsappBtn.style.display = 'none';
+        }
 
         // Build delivery info section
         let deliverySection = '';
@@ -283,6 +267,12 @@
                     ${o.distance_km !== null ? `<div style="font-size:.8rem;color:var(--text-muted);">${o.delivery_eligible ? '✅' : '🚫'} ${o.distance_km} km from shop</div>` : ''}
                   </div>
                   ${o.google_maps_link ? `<div style="margin-top:.5rem"><a href="${o.google_maps_link}" target="_blank" class="btn btn-ghost btn-sm">🗺️ Open Location in Google Maps</a></div>` : ''}
+                ` : ''}
+                ${o.delivery_otp ? `
+                  <div style="margin-top:1rem;padding:.75rem;background:var(--background-secondary);border-radius:var(--radius-sm);border-left:3px solid var(--primary)">
+                    <div style="font-size:.8rem;color:var(--text-muted);margin-bottom:.25rem">Delivery OTP</div>
+                    <div style="font-size:1.4rem;font-weight:700;color:var(--primary);letter-spacing:.1em;font-family:monospace">${o.delivery_otp}</div>
+                  </div>
                 ` : ''}
               </div>
             </div>
@@ -345,30 +335,35 @@
       const statusDisplay = o.status.replace(/_/g, ' ');
       const paymentMethod = o.payment_method === 'COD' ? 'Cash on Delivery' : 'Online Payment';
 
-      let message = `*Tikka Masala Chat Corner*\n\n`;
-      message += `*Order Details:*\n`;
-      message += `Order ID: #${o.order_number}\n\n`;
+      let message = `*TIKKA MASALA - DELIVERY ORDER*\n\n`;
+      message += `*Order ID:* #${o.order_number}\n\n`;
       message += `*Customer:*\n`;
       message += `${o.customer_name}\n`;
-      message += `Mobile: ${o.customer_mobile}\n\n`;
+      message += `${o.customer_mobile}\n\n`;
 
       if (o.order_type === 'DELIVERY') {
         message += `*Delivery Address:*\n`;
         message += `${o.delivery_address || 'Not provided'}\n`;
         if (o.delivery_pincode) message += `Pincode: ${o.delivery_pincode}\n`;
         if (o.delivery_landmark) message += `Landmark: ${o.delivery_landmark}\n`;
-        if (o.google_maps_link) message += `Location: ${o.google_maps_link}\n`;
+        if (o.google_maps_link) {
+          message += `\n*Location:*\n`;
+          message += `${o.google_maps_link}\n`;
+        }
         message += `\n`;
       }
 
       message += `*Order Items:*\n`;
       (o.items || []).forEach(item => {
-        message += `• ${item.product_name} × ${item.quantity}\n`;
+        message += `${item.quantity} × ${item.product_name}\n`;
       });
 
-      message += `\n*Order Total:* ₹${Number(o.total).toFixed(2)}\n`;
-      message += `*Payment Method:* ${paymentMethod}\n`;
-      message += `*Status:* ${statusDisplay}\n`;
+      message += `\n*Total:* ₹${Number(o.total).toFixed(2)}\n`;
+
+      if (o.order_type === 'DELIVERY' && o.delivery_otp) {
+        message += `\n*Delivery OTP:* ${o.delivery_otp}\n`;
+        message += `\nPlease deliver this order and collect the OTP from the customer.`;
+      }
 
       const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
       window.open(whatsappUrl, '_blank');
