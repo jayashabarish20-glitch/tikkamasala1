@@ -4,10 +4,14 @@ Application settings loaded from environment variables.
 from pydantic_settings import BaseSettings
 from typing import List, Optional
 from pathlib import Path
+from dotenv import load_dotenv
 
 # .env lives one level up from backend/
 _project_dir = Path(__file__).resolve().parents[2]
 _env_file = _project_dir.parent / ".env"
+
+# Load .env file explicitly before Settings class initialization
+load_dotenv(str(_env_file))
 
 
 class Settings(BaseSettings):
