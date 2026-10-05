@@ -38,6 +38,7 @@ body.admin-body {
   border-radius: 10px;
   display: flex; align-items: center; justify-content: center;
   font-size: 1.3rem;
+  overflow: hidden;
 }
 .sidebar-logo-text { color: #fff; font-weight: 800; font-size: 1rem; line-height: 1.2; }
 .sidebar-logo-sub  { color: rgba(255,255,255,.6); font-size: .7rem; text-transform: uppercase; letter-spacing: .08em; }
