@@ -167,6 +167,8 @@ async def create_payment(req: CreatePaymentRequest, request: Request, db: AsyncS
 @router.post("/create-order")
 async def create_online_payment_order(req: CreateOnlineOrderRequest, request: Request, db: AsyncSession = Depends(get_db)):
     """Create Razorpay order for ONLINE payment. Actual order created only after payment verification."""
+    if not settings.ONLINE_PAYMENT_ENABLED:
+        raise HTTPException(status_code=503, detail="Online payment is currently unavailable. Please choose Cash on Delivery.")
     user_id = await get_current_user_id(request)
 
     # Get cart
@@ -362,6 +364,8 @@ async def verify_payment(req: VerifyPaymentRequest, request: Request, db: AsyncS
 @router.post("/verify-online")
 async def verify_online_payment(req: VerifyOnlinePaymentRequest, request: Request, db: AsyncSession = Depends(get_db)):
     """Verify ONLINE payment and CREATE the actual order."""
+    if not settings.ONLINE_PAYMENT_ENABLED:
+        raise HTTPException(status_code=503, detail="Online payment is currently unavailable. Please choose Cash on Delivery.")
     user_id = await get_current_user_id(request)
 
     # --- Signature check (skip in demo mode) ---

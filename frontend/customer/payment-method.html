@@ -42,15 +42,9 @@
           </div>
         </div>
 
-        <!-- Online Payment -->
-        <div style="margin-bottom:0;padding:1.5rem;border:2px solid #ddd;border-radius:8px;cursor:pointer;transition:all 0.3s" id="online-option" onclick="selectPaymentMethod('ONLINE')">
-          <div style="display:flex;align-items:center;gap:1rem">
-            <input type="radio" id="payment-online" name="payment-method" value="ONLINE" onchange="selectPaymentMethod('ONLINE')" style="width:24px;height:24px;cursor:pointer">
-            <div style="flex:1">
-              <label for="payment-online" style="cursor:pointer;font-weight:600;font-size:1.1rem;margin:0">💳 Online Payment</label>
-              <p style="margin:.5rem 0 0 0;color:var(--text-muted);font-size:.9rem">Credit/Debit Card, UPI, Wallet</p>
-            </div>
-          </div>
+        <!-- Online Payment (temporarily disabled) -->
+        <div style="display:none" id="online-option">
+          <input type="radio" id="payment-online" name="payment-method" value="ONLINE" style="display:none">
         </div>
       </div>
     </div>
