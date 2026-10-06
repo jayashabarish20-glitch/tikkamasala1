@@ -263,6 +263,7 @@ p { color: var(--text-body); }
   justify-content: center;
   font-size: 1.4rem;
   flex-shrink: 0;
+  overflow: hidden;
 }
 .navbar-brand-text {
   display: flex;
@@ -385,6 +386,7 @@ p { color: var(--text-body); }
   display: flex; align-items: center; justify-content: center;
   font-size: 1.3rem;
   flex-shrink: 0;
+  overflow: hidden;
 }
 .customer-sidebar-tmcc {
   color: #fff;

@@ -45,9 +45,13 @@ class Settings(BaseSettings):
     SMS_PROVIDER: str = "mock"
     SMS_API_KEY: str = ""
     SMS_SENDER_ID: str = "TIKKA"
+    SMS_OTP_TEMPLATE: str = "AUTOGEN"
 
     # Demo Mode
     DEMO_MODE: bool = True
+
+    # Feature flags
+    ONLINE_PAYMENT_ENABLED: bool = True
 
     # AWS
     AWS_REGION: str = "ap-south-1"
