@@ -8,6 +8,8 @@ services:
       - "8000:8000"
     env_file:
       - .env
+    volumes:
+      - /home/ubuntu/tikkamasala-data/tikkamasala.db:/app/tikkamasala.db
     restart: unless-stopped
 
   frontend:
