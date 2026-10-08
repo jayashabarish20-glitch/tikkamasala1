@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login — Tikka Masala Chat Corner</title>
-  <meta name="description" content="Login to your Tikka Masala Chat Corner account.">
+  <title>Login — Tikha Masala Chat Corner</title>
+  <meta name="description" content="Login to your Tikha Masala Chat Corner account.">
   <link rel="stylesheet" href="/css/main.css?v=5">
   <link rel="stylesheet" href="/css/customer.css?v=6">
 </head>
@@ -14,7 +14,7 @@
       <div class="auth-logo">
         <div class="auth-logo-icon"><img src="/assets/tmcc-logo.jpg" alt="TMCC Logo" style="width:100%;height:100%;object-fit:cover"></div>
         <h1 class="auth-title">Welcome Back!</h1>
-        <p class="auth-subtitle">Sign in to Tikka Masala Chat Corner</p>
+        <p class="auth-subtitle">Sign in to Tikha Masala Chat Corner</p>
       </div>
 
       <div id="login-error" class="alert alert-error hidden"></div>
@@ -62,6 +62,9 @@
         <div id="forgot-otp-step" class="hidden">
           <h3 style="font-size: 1.3rem; margin-bottom: 1rem;">Verify OTP</h3>
           <form onsubmit="handleVerifyResetOTP(event)">
+            <div class="alert alert-info" style="margin-bottom:1.5rem;font-size:0.9rem">
+              📞 <strong>OTP Notice:</strong> Your OTP may be delivered through an automated phone call to your registered mobile number. Please answer the call and enter the OTP shown/provided during the verification process. Never share your OTP with anyone.
+            </div>
             <div class="form-group">
               <label class="form-label">Enter OTP</label>
               <div style="display: flex; gap: 0.5rem; justify-content: center; margin-bottom: 1rem;">

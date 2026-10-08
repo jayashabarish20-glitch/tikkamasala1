@@ -155,10 +155,11 @@ async function loadCheckoutSummary() {
         </div>`
       ).join('');
     }
-    if (subtotalEl) subtotalEl.textContent = formatPrice(cart.subtotal);
+    const subtotal = Number(cart.subtotal) || 0;
+    if (subtotalEl) subtotalEl.textContent = formatPrice(subtotal);
     if (deliveryEl) deliveryEl.textContent = '₹30';
     if (totalEl) {
-      const total = cart.subtotal + 30;
+      const total = subtotal + 30;
       totalEl.textContent = formatPrice(total);
     }
   } catch (err) {

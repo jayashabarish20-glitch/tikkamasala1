@@ -15,3 +15,4 @@ python-dotenv
 httpx
 aiofiles
 greenlet
+firebase-admin

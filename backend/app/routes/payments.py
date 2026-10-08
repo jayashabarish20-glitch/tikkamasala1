@@ -1,4 +1,4 @@
-﻿"""
+"""
 Razorpay payment routes with server-side signature verification.
 In DEMO_MODE=true, skips real Razorpay calls for local testing.
 For ONLINE payments, order is created AFTER payment verification.
@@ -29,7 +29,6 @@ from app.schemas.payment import CreatePaymentRequest, VerifyPaymentRequest, Veri
 from app.utils.jwt import decode_token
 from app.utils.location import haversine_distance
 from app.services.websocket_manager import ws_manager
-from app.services.sms_service import send_delivery_otp_sms
 from app.utils.otp import generate_otp
 
 router = APIRouter(prefix="/api/payments", tags=["Payments"])
@@ -213,7 +212,7 @@ async def create_online_payment_order(req: CreateOnlineOrderRequest, request: Re
         if distance > settings.DELIVERY_RADIUS_KM:
             raise HTTPException(
                 status_code=400,
-                detail=f"Sorry, delivery is available only within {settings.DELIVERY_RADIUS_KM} km of Tikka Masala Chat Corner. Your location is {distance:.1f} km away."
+                detail=f"Sorry, delivery is available only within {settings.DELIVERY_RADIUS_KM} km of Tikha Masala Chat Corner. Your location is {distance:.1f} km away."
             )
         delivery_fee = Decimal(str(settings.DELIVERY_CHARGE))
 
@@ -336,10 +335,8 @@ async def verify_payment(req: VerifyPaymentRequest, request: Request, db: AsyncS
     db.add(OrderStatusHistory(order_id=order.id, status="PAYMENT_VERIFIED", changed_by="system"))
     await db.commit()
 
-    user_result = await db.execute(select(User).where(User.id == user_id))
-    user = user_result.scalars().first()
-    if user:
-        await send_delivery_otp_sms(user.mobile, otp)
+    # Note: delivery_otp is stored in DB for admin verification
+    # but NOT sent to customer via SMS/call
 
     await ws_manager.broadcast_to_admins({
         "event": "PAYMENT_VERIFIED",
@@ -492,17 +489,15 @@ async def verify_online_payment(req: VerifyOnlinePaymentRequest, request: Reques
     await db.execute(delete(CartItem).where(CartItem.cart_id == cart.id))
     await db.commit()
 
-    # Generate and send OTP
+    # Generate OTP for admin verification (not sent to customer)
     otp = generate_otp(6)
     order.delivery_otp = otp
     order.otp_expires_at = datetime.utcnow() + timedelta(hours=12)
     db.add(order)
     await db.commit()
 
-    user_result = await db.execute(select(User).where(User.id == user_id))
-    user = user_result.scalars().first()
-    if user:
-        await send_delivery_otp_sms(user.mobile, otp)
+    # Note: delivery_otp is stored in DB for admin verification
+    # but NOT sent to customer via SMS/call
 
     # Notify admin
     await ws_manager.broadcast_to_admins({

@@ -7,6 +7,9 @@
   <meta name="description" content="Manage all customer orders, update statuses, and verify delivery OTPs.">
   <link rel="stylesheet" href="../css/main.css?v=5">
   <link rel="stylesheet" href="../css/admin.css">
+  <!-- Firebase Cloud Messaging SDK (for push notifications) -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js"></script>
 </head>
 <body class="admin-body">
 
@@ -151,10 +154,13 @@
   <script src="../js/auth.js"></script>
   <script src="../js/websocket.js"></script>
   <script src="../js/admin.js"></script>
+  <script src="../js/firebase-admin.js"></script>
   <script>
     requireAdminAuth();
     initAdminNav();
     initAdminWebSocket();
+    // Initialize Firebase Cloud Messaging for push notifications
+    initializeFirebaseMessaging();
 
     let allOrders = [];
 
@@ -332,7 +338,7 @@
       const statusDisplay = o.status.replace(/_/g, ' ');
       const paymentMethod = o.payment_method === 'COD' ? 'Cash on Delivery' : 'Online Payment';
 
-      let message = `*TIKKA MASALA - DELIVERY ORDER*\n\n`;
+      let message = `*TIKHA MASALA - DELIVERY ORDER*\n\n`;
       message += `*Order ID:* #${o.order_number}\n\n`;
       message += `*Customer:*\n`;
       message += `${o.customer_name}\n`;

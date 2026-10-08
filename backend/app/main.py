@@ -25,9 +25,10 @@ from app.routes.admin.products import router as admin_products_router
 from app.routes.admin.customers import router as admin_customers_router
 from app.routes.admin.inventory import router as admin_inventory_router
 from app.routes.admin.sales import router as admin_sales_router
+from app.routes.admin.notifications import router as admin_notifications_router
 
 app = FastAPI(
-    title="Tikka Masala Chat Corner API",
+    title="Tikha Masala Chat Corner API",
     description="Full-stack chaat ordering & delivery system",
     version="1.0.0",
     docs_url="/docs",
@@ -58,6 +59,7 @@ app.include_router(admin_products_router)
 app.include_router(admin_customers_router)
 app.include_router(admin_inventory_router)
 app.include_router(admin_sales_router)
+app.include_router(admin_notifications_router)
 
 
 @app.on_event("startup")

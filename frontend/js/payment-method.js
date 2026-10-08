@@ -134,7 +134,7 @@ async function handleOnlinePayment() {
       key: paymentData.razorpay_key_id,
       amount: paymentData.amount,
       currency: paymentData.currency,
-      name: 'Tikka Masala Chat Corner',
+      name: 'Tikha Masala Chat Corner',
       description: 'Order Payment',
       image: 'https://images.unsplash.com/photo-1606491956689-2ea866880c84?w=100',
       order_id: paymentData.razorpay_order_id,
