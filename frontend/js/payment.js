@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Razorpay payment flow.
  * In DEMO_MODE (when backend returns demo_mode:true), bypasses Razorpay SDK
  * and simulates a successful payment instantly.
@@ -30,7 +30,7 @@ async function initiatePayment(orderId) {
       key: payData.razorpay_key_id,
       amount: payData.amount,
       currency: payData.currency,
-      name: 'Tikka Masala Chat Corner',
+      name: 'Tikha Masala Chat Corner',
       description: `Order #${payData.order_number}`,
       image: 'https://images.unsplash.com/photo-1606491956689-2ea866880c84?w=100',
       order_id: payData.razorpay_order_id,

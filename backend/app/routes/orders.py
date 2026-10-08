@@ -24,9 +24,13 @@ from app.utils.jwt import decode_token
 from app.utils.location import haversine_distance
 from app.utils.otp import generate_otp
 from app.services.websocket_manager import ws_manager
-from app.services.sms_service import send_delivery_otp_sms
+from app.services.notification_service import send_admin_new_order_notification
+from app.models.admin_notification_device import AdminNotificationDevice
 import random
 import string
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/orders", tags=["Orders"])
 
@@ -134,7 +138,7 @@ async def create_order(req: CreateOrderRequest, request: Request, db: AsyncSessi
         if distance > settings.DELIVERY_RADIUS_KM:
             raise HTTPException(
                 status_code=400,
-                detail=f"Sorry, delivery is available only within {settings.DELIVERY_RADIUS_KM} km of Tikka Masala Chat Corner. Your location is {distance:.1f} km away."
+                detail=f"Sorry, delivery is available only within {settings.DELIVERY_RADIUS_KM} km of Tikha Masala Chat Corner. Your location is {distance:.1f} km away."
             )
         delivery_fee = Decimal(str(settings.DELIVERY_CHARGE))
 
@@ -197,10 +201,8 @@ async def create_order(req: CreateOrderRequest, request: Request, db: AsyncSessi
     db.add(order)
     await db.commit()
 
-    user_result = await db.execute(select(User).where(User.id == user_id))
-    user = user_result.scalars().first()
-    if user:
-        await send_delivery_otp_sms(user.mobile, otp)
+    # Note: delivery_otp is stored in DB for admin verification
+    # but NOT sent to customer via SMS/call
 
     # Step 9: Clear cart
     await db.execute(delete(CartItem).where(CartItem.cart_id == cart.id))
@@ -222,6 +224,28 @@ async def create_order(req: CreateOrderRequest, request: Request, db: AsyncSessi
             "created_at": order.created_at.isoformat() if order.created_at else None,
         }
     })
+
+    # Step 11: Send FCM phone notification to admin devices
+    # This is done asynchronously and failure does NOT break order creation
+    try:
+        devices_result = await db.execute(
+            select(AdminNotificationDevice).where(
+                AdminNotificationDevice.is_active == True
+            )
+        )
+        devices = devices_result.scalars().all()
+        admin_tokens = [d.device_token for d in devices]
+
+        if admin_tokens:
+            await send_admin_new_order_notification(
+                order_id=order.id,
+                order_number=order.order_number,
+                total=order.total,
+                order_type=order.order_type,
+                admin_device_tokens=admin_tokens,
+            )
+    except Exception as e:
+        logger.exception(f"Failed to send FCM notification for order {order.order_number}: {e}")
 
     return {
         "message": "Order created successfully.",

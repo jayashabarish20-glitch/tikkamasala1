@@ -53,6 +53,9 @@ class Settings(BaseSettings):
     # Feature flags
     ONLINE_PAYMENT_ENABLED: bool = True
 
+    # Firebase Cloud Messaging (FCM)
+    FIREBASE_SERVICE_ACCOUNT_JSON: str = ""
+
     # AWS
     AWS_REGION: str = "ap-south-1"
     AWS_ACCESS_KEY_ID: str = ""
