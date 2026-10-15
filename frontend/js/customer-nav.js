@@ -141,7 +141,7 @@
 
               <div>
                 <div class="tmcc-footer-label">Info</div>
-                <p>Parcel Charges: ₹10 Extra</p>
+                
                 <p>Jain Food Available</p>
                 <a
                   href="https://instagram.com/tikhamasalachatcorner"
