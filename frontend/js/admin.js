@@ -2,6 +2,49 @@
  * Admin JavaScript — dashboard, orders, products, sales.
  */
 
+// ── Shop Available / Unavailable ─────────────────────────────
+let shopIsOpen = null;
+
+function renderShopStatus() {
+  const btn = document.getElementById('shop-status-btn');
+  if (!btn || shopIsOpen === null) return;
+  btn.textContent = shopIsOpen ? '🟢 Shop Available' : '🔴 Shop Unavailable';
+  btn.title = shopIsOpen ? 'Click to mark the shop Unavailable' : 'Click to mark the shop Available';
+  btn.className = shopIsOpen ? 'btn btn-primary btn-sm' : 'btn btn-outline btn-sm';
+  btn.style.minWidth = '11rem';
+}
+
+async function loadShopStatus() {
+  try {
+    const data = await api.get('/api/shop/status');
+    shopIsOpen = data.is_open;
+    renderShopStatus();
+  } catch (err) {
+    console.error('Shop status error:', err);
+  }
+}
+
+async function toggleShopStatus() {
+  const btn = document.getElementById('shop-status-btn');
+  const nextState = !shopIsOpen;
+  const question = nextState
+    ? 'Mark the shop as Available? Customers can place orders again.'
+    : 'Mark the shop as Unavailable? Customers will not be able to place new orders.';
+  if (!confirm(question)) return;
+
+  btn.disabled = true;
+  try {
+    const data = await api.put('/api/admin/shop/status', { is_open: nextState });
+    shopIsOpen = data.is_open;
+    renderShopStatus();
+    showToast(shopIsOpen ? 'Shop is now Available.' : 'Shop is now Unavailable.', shopIsOpen ? 'success' : 'warning');
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
 // ── Dashboard ────────────────────────────────────────────────
 async function loadDashboard() {
   try {

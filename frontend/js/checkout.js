@@ -58,7 +58,7 @@ async function handleContinueToPayment() {
   const lng = parseFloat(document.getElementById('delivery-lng')?.value || '');
 
   if (!lat || !lng) {
-    showToast('Please select your delivery location (either type address or use GPS).', 'warning');
+    showToast('Please detect your location using GPS or ensure location services are enabled.', 'warning');
     return;
   }
 

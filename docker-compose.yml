@@ -1,5 +1,5 @@
-services:
 
+services:
   backend:
     build:
       context: ./backend
@@ -10,6 +10,7 @@ services:
       - .env
     volumes:
       - /home/ubuntu/tikkamasala-data/tikkamasala.db:/app/tikkamasala.db
+      - /home/ubuntu/tikhamasala-d495a-firebase-adminsdk-fbsvc-e8edb8634f.json:/run/secrets/firebase-service-account.json:ro
     restart: unless-stopped
 
   frontend:

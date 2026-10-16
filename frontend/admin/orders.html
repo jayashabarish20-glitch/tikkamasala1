@@ -57,6 +57,8 @@
             🔔
             <div class="notification-badge hidden" id="notification-badge">0</div>
           </button>
+          <span id="phone-alerts-status" class="text-muted" style="font-size:.8rem"></span>
+          <button class="btn btn-outline btn-sm" id="enable-phone-alerts-btn" onclick="handleEnablePhoneAlerts(this)">🔔 Enable phone alerts</button>
           <button class="btn btn-primary btn-sm" onclick="loadAdminOrders()">🔄 Refresh</button>
         </div>
       </header>
@@ -154,6 +156,7 @@
   <script src="../js/auth.js"></script>
   <script src="../js/websocket.js"></script>
   <script src="../js/admin.js"></script>
+  <script src="/api/admin/notifications/web-config.js"></script>
   <script src="../js/firebase-admin.js"></script>
   <script>
     requireAdminAuth();
@@ -161,6 +164,12 @@
     initAdminWebSocket();
     // Initialize Firebase Cloud Messaging for push notifications
     initializeFirebaseMessaging();
+
+    async function handleEnablePhoneAlerts(btn) {
+      btn.disabled = true;
+      document.getElementById('phone-alerts-status').textContent = await enableFirebaseNotifications();
+      btn.disabled = false;
+    }
 
     let allOrders = [];
 
