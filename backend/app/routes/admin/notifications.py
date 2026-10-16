@@ -2,12 +2,15 @@
 Admin notification device registration routes.
 Allows admin phones to register their FCM device tokens for push notifications.
 """
-from fastapi import APIRouter, Depends, HTTPException, Request
+import json
+
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from pydantic import BaseModel
 
 from app.config.database import get_db
+from app.config.settings import settings
 from app.models.admin_notification_device import AdminNotificationDevice
 from app.routes.admin.deps import require_admin
 
@@ -24,6 +27,24 @@ class DeviceResponse(BaseModel):
     device_token: str
     platform: str
     is_active: bool
+
+
+@router.get("/notifications/web-config.js")
+async def firebase_web_config():
+    """Public Firebase Web App config for the admin page and service worker (no secrets)."""
+    config = {
+        "apiKey": settings.VITE_FIREBASE_API_KEY,
+        "authDomain": settings.VITE_FIREBASE_AUTH_DOMAIN,
+        "projectId": settings.VITE_FIREBASE_PROJECT_ID,
+        "storageBucket": settings.VITE_FIREBASE_STORAGE_BUCKET,
+        "messagingSenderId": settings.VITE_FIREBASE_MESSAGING_SENDER_ID,
+        "appId": settings.VITE_FIREBASE_APP_ID,
+    }
+    body = (
+        f"self.FIREBASE_CONFIG = {json.dumps(config)};\n"
+        f"self.__FIREBASE_VAPID_KEY = {json.dumps(settings.VITE_FIREBASE_VAPID_KEY)};\n"
+    )
+    return Response(content=body, media_type="application/javascript", headers={"Cache-Control": "no-cache"})
 
 
 @router.post("/notifications/register-device")

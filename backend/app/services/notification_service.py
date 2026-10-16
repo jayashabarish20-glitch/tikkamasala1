@@ -3,11 +3,17 @@ Firebase Cloud Messaging (FCM) notification service for admin phone push notific
 Handles sending notifications to registered admin devices.
 Failures are logged but never break order creation.
 """
+import asyncio
 import logging
 import json
 import os
 from typing import Optional, List
 from decimal import Decimal
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.admin_notification_device import AdminNotificationDevice
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +52,31 @@ def _initialize_firebase():
         return None
 
 
+def _send_to_tokens(messaging, data: dict, tokens: List[str]) -> int:
+    """Blocking FCM calls. Runs in a worker thread so the event loop is never stalled."""
+    success_count = 0
+    for token in tokens:
+        try:
+            # Data-only message: the service worker builds the visible notification,
+            # so the browser never shows a second copy.
+            message = messaging.Message(
+                data=data,
+                token=token,
+                webpush=messaging.WebpushConfig(
+                    headers={"Urgency": "high"},
+                    fcm_options=messaging.WebpushFcmOptions(
+                        link="/admin/orders.html"
+                    ),
+                ),
+            )
+            response = messaging.send(message)
+            logger.info(f"[FCM] Notification sent to token (response: {response})")
+            success_count += 1
+        except Exception as e:
+            logger.warning(f"[FCM] Failed to send to token: {type(e).__name__}")
+    return success_count
+
+
 async def send_admin_new_order_notification(
     order_id: int,
     order_number: str,
@@ -79,12 +110,9 @@ async def send_admin_new_order_notification(
     try:
         from firebase_admin import messaging
 
-        # Build notification
-        title = "🔔 New Order"
-        body = f"Order {order_number} — ₹{float(total)}"
-
-        notification = messaging.Notification(title=title, body=body)
         data = {
+            "title": "New Order Received",
+            "body": f"Order {order_number} — ₹{float(total)}",
             "order_id": str(order_id),
             "order_number": order_number,
             "total": str(total),
@@ -92,40 +120,37 @@ async def send_admin_new_order_notification(
             "action": "open_orders",
         }
 
-        success_count = 0
-        failed_tokens = []
+        success_count = await asyncio.to_thread(_send_to_tokens, messaging, data, admin_device_tokens)
 
-        for token in admin_device_tokens:
-            try:
-                message = messaging.Message(
-                    notification=notification,
-                    data=data,
-                    token=token,
-                    webpush=messaging.WebpushConfig(
-                        fcm_options=messaging.WebpushFcmOptions(
-                            link="/admin/orders.html"
-                        )
-                    ),
-                )
-
-                response = messaging.send(message)
-                logger.info(f"[FCM] Notification sent to token (response: {response})")
-                success_count += 1
-            except Exception as e:
-                logger.warning(f"[FCM] Failed to send to token: {type(e).__name__}")
-                # Mark token as potentially invalid for later cleanup
-                failed_tokens.append(token)
-
-        # Log summary
         if success_count > 0:
             logger.info(f"[FCM] New order notification sent to {success_count}/{len(admin_device_tokens)} devices")
-
-        # Return failed tokens for potential cleanup (caller responsibility)
-        if failed_tokens:
-            logger.debug(f"[FCM] Failed tokens for potential cleanup: {len(failed_tokens)}")
 
         return success_count > 0
 
     except Exception as e:
         logger.exception(f"[FCM] Unexpected error sending notification: {e}")
+        return False
+
+
+async def notify_admins_new_order(db: AsyncSession, order) -> bool:
+    """
+    Push "New Order Received" to every active admin device.
+    Never raises: the order is already saved, so a notification problem must not affect it.
+    """
+    try:
+        result = await db.execute(
+            select(AdminNotificationDevice.device_token).where(
+                AdminNotificationDevice.is_active == True
+            )
+        )
+        tokens = list(result.scalars().all())
+        return await send_admin_new_order_notification(
+            order_id=order.id,
+            order_number=order.order_number,
+            total=order.total,
+            order_type=order.order_type,
+            admin_device_tokens=tokens,
+        )
+    except Exception as e:
+        logger.exception(f"[FCM] Could not send new order notification: {e}")
         return False

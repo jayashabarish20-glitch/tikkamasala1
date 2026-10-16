@@ -55,6 +55,14 @@ class Settings(BaseSettings):
 
     # Firebase Cloud Messaging (FCM)
     FIREBASE_SERVICE_ACCOUNT_JSON: str = ""
+    # Firebase Web App public config (sent to the browser; not secret)
+    VITE_FIREBASE_API_KEY: str = ""
+    VITE_FIREBASE_AUTH_DOMAIN: str = ""
+    VITE_FIREBASE_PROJECT_ID: str = ""
+    VITE_FIREBASE_STORAGE_BUCKET: str = ""
+    VITE_FIREBASE_MESSAGING_SENDER_ID: str = ""
+    VITE_FIREBASE_APP_ID: str = ""
+    VITE_FIREBASE_VAPID_KEY: str = ""
 
     # AWS
     AWS_REGION: str = "ap-south-1"
