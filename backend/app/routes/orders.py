@@ -24,8 +24,8 @@ from app.utils.jwt import decode_token
 from app.utils.location import haversine_distance
 from app.utils.otp import generate_otp
 from app.services.websocket_manager import ws_manager
-from app.services.notification_service import send_admin_new_order_notification
-from app.models.admin_notification_device import AdminNotificationDevice
+from app.services.notification_service import notify_admins_new_order
+from app.services.shop_status_service import require_shop_open
 import random
 import string
 import logging
@@ -79,6 +79,7 @@ async def generate_order_number(db: AsyncSession) -> str:
 async def create_order(req: CreateOrderRequest, request: Request, db: AsyncSession = Depends(get_db)):
     """Full order creation with all validations. For OFFLINE/COD only. ONLINE orders created after payment."""
     user_id = await get_current_user_id(request)
+    await require_shop_open(db)
 
     if req.payment_method == "ONLINE":
         raise HTTPException(status_code=400, detail="For ONLINE payments, use /api/payments/create-order endpoint.")
@@ -226,26 +227,8 @@ async def create_order(req: CreateOrderRequest, request: Request, db: AsyncSessi
     })
 
     # Step 11: Send FCM phone notification to admin devices
-    # This is done asynchronously and failure does NOT break order creation
-    try:
-        devices_result = await db.execute(
-            select(AdminNotificationDevice).where(
-                AdminNotificationDevice.is_active == True
-            )
-        )
-        devices = devices_result.scalars().all()
-        admin_tokens = [d.device_token for d in devices]
-
-        if admin_tokens:
-            await send_admin_new_order_notification(
-                order_id=order.id,
-                order_number=order.order_number,
-                total=order.total,
-                order_type=order.order_type,
-                admin_device_tokens=admin_tokens,
-            )
-    except Exception as e:
-        logger.exception(f"Failed to send FCM notification for order {order.order_number}: {e}")
+    # Failure does NOT break order creation (helper never raises)
+    await notify_admins_new_order(db, order)
 
     return {
         "message": "Order created successfully.",

@@ -26,6 +26,8 @@ from app.routes.admin.customers import router as admin_customers_router
 from app.routes.admin.inventory import router as admin_inventory_router
 from app.routes.admin.sales import router as admin_sales_router
 from app.routes.admin.notifications import router as admin_notifications_router
+from app.routes.shop import router as shop_router
+from app.routes.admin.shop import router as admin_shop_router
 
 app = FastAPI(
     title="Tikha Masala Chat Corner API",
@@ -60,6 +62,8 @@ app.include_router(admin_customers_router)
 app.include_router(admin_inventory_router)
 app.include_router(admin_sales_router)
 app.include_router(admin_notifications_router)
+app.include_router(shop_router)
+app.include_router(admin_shop_router)
 
 
 @app.on_event("startup")
@@ -102,6 +106,16 @@ async def root():
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+@app.get("/firebase-messaging-sw.js")
+async def firebase_messaging_sw():
+    # FCM background push needs the service worker served from the site root
+    return FileResponse(
+        os.path.join(_frontend_dir, "firebase-messaging-sw.js"),
+        media_type="application/javascript",
+        headers={"Cache-Control": "no-cache"},
+    )
 
 
 if __name__ == "__main__":

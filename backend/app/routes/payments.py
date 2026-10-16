@@ -29,6 +29,8 @@ from app.schemas.payment import CreatePaymentRequest, VerifyPaymentRequest, Veri
 from app.utils.jwt import decode_token
 from app.utils.location import haversine_distance
 from app.services.websocket_manager import ws_manager
+from app.services.notification_service import notify_admins_new_order
+from app.services.shop_status_service import require_shop_open
 from app.utils.otp import generate_otp
 
 router = APIRouter(prefix="/api/payments", tags=["Payments"])
@@ -169,6 +171,7 @@ async def create_online_payment_order(req: CreateOnlineOrderRequest, request: Re
     if not settings.ONLINE_PAYMENT_ENABLED:
         raise HTTPException(status_code=503, detail="Online payment is currently unavailable. Please choose Cash on Delivery.")
     user_id = await get_current_user_id(request)
+    await require_shop_open(db)
 
     # Get cart
     cart_result = await db.execute(select(Cart).where(Cart.user_id == user_id))
@@ -364,6 +367,7 @@ async def verify_online_payment(req: VerifyOnlinePaymentRequest, request: Reques
     if not settings.ONLINE_PAYMENT_ENABLED:
         raise HTTPException(status_code=503, detail="Online payment is currently unavailable. Please choose Cash on Delivery.")
     user_id = await get_current_user_id(request)
+    await require_shop_open(db)
 
     # --- Signature check (skip in demo mode) ---
     if not settings.DEMO_MODE:
@@ -513,6 +517,9 @@ async def verify_online_payment(req: VerifyOnlinePaymentRequest, request: Reques
             "created_at": order.created_at.isoformat() if order.created_at else None,
         }
     })
+
+    # FCM phone notification to admin devices (failure never breaks the order)
+    await notify_admins_new_order(db, order)
 
     return {
         "message": "Payment verified. Order created and confirmed.",
