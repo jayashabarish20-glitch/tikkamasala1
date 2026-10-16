@@ -239,8 +239,42 @@
     }
   }
 
+  // Shows "Shop Unavailable" and disables order buttons when the admin has closed the shop.
+  // The backend rejects orders regardless; this only makes the state visible.
+  async function applyShopStatus() {
+    try {
+      const resp = await fetch('/api/shop/status');
+      if (!resp.ok) return;
+      const status = await resp.json();
+      if (status.is_open) return;
+
+      const navbar = document.querySelector('.navbar');
+      if (navbar && !document.getElementById('shop-unavailable-banner')) {
+        navbar.insertAdjacentHTML('afterend', `
+          <div id="shop-unavailable-banner" class="alert alert-error" role="status" style="margin:0;border-radius:0;text-align:center;font-weight:600">
+            🚫 Shop Unavailable. We are not accepting new orders right now.
+          </div>`);
+      }
+
+      ['continue-btn', 'pay-btn', 'place-order-btn'].forEach((id) => {
+        const btn = document.getElementById(id);
+        if (btn) {
+          btn.disabled = true;
+          btn.style.opacity = '0.5';
+          btn.style.cursor = 'not-allowed';
+        }
+      });
+
+      const checkoutLink = document.getElementById('checkout-link');
+      if (checkoutLink) checkoutLink.style.pointerEvents = 'none';
+    } catch (err) {
+      // Network problem: the backend still blocks orders while the shop is closed
+    }
+  }
+
   function initCustomerNav() {
     mount();
+    applyShopStatus();
   }
 
   window.toggleNav = toggleNav;

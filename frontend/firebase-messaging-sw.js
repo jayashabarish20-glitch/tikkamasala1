@@ -7,18 +7,11 @@
 importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js');
 
-// Firebase config - loaded from frontend environment
-const firebaseConfig = {
-  apiKey: self.importScripts ? "FIREBASE_API_KEY_PLACEHOLDER" : "",
-  authDomain: "FIREBASE_AUTH_DOMAIN_PLACEHOLDER",
-  projectId: "FIREBASE_PROJECT_ID_PLACEHOLDER",
-  storageBucket: "FIREBASE_STORAGE_BUCKET_PLACEHOLDER",
-  messagingSenderId: "FIREBASE_MESSAGING_SENDER_ID_PLACEHOLDER",
-  appId: "FIREBASE_APP_ID_PLACEHOLDER",
-};
+// Public Firebase web config served by the backend (sets self.FIREBASE_CONFIG)
+importScripts('/api/admin/notifications/web-config.js');
 
 // Initialize Firebase in service worker
-firebase.initializeApp(firebaseConfig);
+firebase.initializeApp(self.FIREBASE_CONFIG);
 
 // Get messaging instance
 const messaging = firebase.messaging();
@@ -27,9 +20,10 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw] Received background message:', payload);
 
-  const notificationTitle = payload.notification?.title || "New Order";
+  // Backend sends data-only messages, so this is the only notification shown
+  const notificationTitle = payload.data?.title || "New Order Received";
   const notificationOptions = {
-    body: payload.notification?.body || "A new order has been placed.",
+    body: payload.data?.body || "A new order has been placed.",
     icon: '/assets/tmcc-logo.jpg',
     badge: '/assets/tmcc-logo.jpg',
     tag: 'order-notification',
@@ -55,7 +49,7 @@ self.addEventListener('notificationclick', (event) => {
         // Check if there's already a window/tab with the target URL open
         for (let i = 0; i < clientList.length; i++) {
           const client = clientList[i];
-          if (client.url === urlToOpen && 'focus' in client) {
+          if (client.url.endsWith(urlToOpen) && 'focus' in client) {
             return client.focus();
           }
         }

@@ -40,35 +40,24 @@ async function initializeFirebaseMessaging() {
 
     console.log('[FCM] Firebase initialized successfully');
 
-    // Request notification permission
-    const permission = Notification.permission;
-    if (permission === 'granted') {
-      await registerFCMToken();
-    } else if (permission !== 'denied') {
-      // Ask for permission
-      Notification.requestPermission()
-        .then((perm) => {
-          if (perm === 'granted') {
-            registerFCMToken();
-          }
-        })
-        .catch((err) => {
-          console.log('[FCM] Notification permission request failed:', err);
-        });
-    } else {
-      console.log('[FCM] Notifications blocked by user');
+    // Register service worker first so the FCM token is bound to it
+    if ('serviceWorker' in navigator) {
+      try {
+        const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+        console.log('[FCM] Service Worker registered:', registration);
+        messaging.useServiceWorker(registration);
+      } catch (err) {
+        console.warn('[FCM] Service Worker registration failed:', err);
+      }
     }
 
-    // Register service worker
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/firebase-messaging-sw.js')
-        .then((registration) => {
-          console.log('[FCM] Service Worker registered:', registration);
-          messaging.useServiceWorker(registration);
-        })
-        .catch((err) => {
-          console.warn('[FCM] Service Worker registration failed:', err);
-        });
+    // Browsers only show the permission prompt after a user click, so the admin
+    // enables alerts with a button (enableFirebaseNotifications). Granted permission
+    // is registered automatically on page load.
+    if (Notification.permission === 'granted') {
+      await registerFCMToken();
+    } else {
+      console.log('[FCM] Notification permission not granted yet');
     }
 
     // Handle foreground messages
@@ -77,9 +66,9 @@ async function initializeFirebaseMessaging() {
 
       // Show in-browser notification
       if (Notification.permission === 'granted') {
-        const title = payload.notification?.title || 'New Order';
+        const title = payload.data?.title || 'New Order Received';
         const options = {
-          body: payload.notification?.body || 'A new order has been placed.',
+          body: payload.data?.body || 'A new order has been placed.',
           icon: '/assets/tmcc-logo.jpg',
           badge: '/assets/tmcc-logo.jpg',
           tag: 'order-notification',
@@ -96,6 +85,25 @@ async function initializeFirebaseMessaging() {
   } catch (err) {
     console.error('[FCM] Firebase initialization error:', err);
   }
+}
+
+/**
+ * Enable phone alerts for this device. Call from a button click so the
+ * browser shows the permission prompt. Returns a message for the admin.
+ */
+async function enableFirebaseNotifications() {
+  if (!messaging) {
+    return 'Phone alerts are not configured on the server yet.';
+  }
+  if (!('Notification' in window)) {
+    return 'This browser does not support notifications.';
+  }
+  const permission = await Notification.requestPermission();
+  if (permission !== 'granted') {
+    return 'Notifications are blocked. Allow them in the browser site settings and try again.';
+  }
+  await registerFCMToken();
+  return 'Phone alerts are on for this device.';
 }
 
 /**

@@ -75,6 +75,7 @@
           </div>
         </div>
         <div class="admin-header-right">
+          <button class="btn btn-sm" id="shop-status-btn" onclick="toggleShopStatus()" style="min-width:11rem">Loading shop status...</button>
           <button class="notification-btn" id="notif-btn" title="Notifications">
             🔔
             <div class="notification-badge hidden" id="notification-badge">0</div>
@@ -185,6 +186,7 @@
     requireAdminAuth();
     initAdminNav();
     loadDashboard();
+    loadShopStatus();
     initAdminWebSocket();
 
     // Load recent orders (first 5)
